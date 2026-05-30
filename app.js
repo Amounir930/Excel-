@@ -555,36 +555,58 @@ function selectClient(client) {
         <!-- Tab Content 3: Feasibility & Surpluses -->
         <div class="tab-content" id="tab-content-feasibility">
             <div class="inspector-section">
-                <h4><i class="fa-solid fa-chart-pie" style="color: #EC4899;"></i> الجدوى التمويلية والفائض الاقتصادي</h4>
-                <div class="grid-2col" style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--border-color);">
+                <h4><i class="fa-solid fa-chart-pie" style="color: #EC4899;"></i> سادساً: دراسة الجدوى التمويلية (معاملات المدخلات)</h4>
+                <div class="grid-2col" style="margin-bottom: 12px;">
                     <div class="info-item">
                         <span class="info-label">مبلغ التمويل المتوقع</span>
-                        <span class="info-value currency" style="color: #10B981; font-size: 16px;">${formatCurrency(client.expected_funding)}</span>
+                        <span class="info-value currency" style="color: #10B981; font-weight: bold;">${formatCurrency(client.expected_funding)} ريال</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">مبلغ السداد الإجمالي المطلوب</span>
-                        <span class="info-value currency" style="color: #EF4444; font-size: 16px;">${formatCurrency(client.required_payment)}</span>
+                        <span class="info-label">نسبة أتعاب الشركة</span>
+                        <span class="info-value" style="font-family: 'Outfit'; font-weight: bold;">${client.fees_percent * 100}%</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">إجمالي المديونيات (الالتزامات)</span>
+                        <span class="info-value currency" style="color: #EF4444;">${formatCurrency(client.total_debts)} ريال</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">إجمالي التنفيذات القضائية</span>
+                        <span class="info-value currency" style="color: #EF4444;">${formatCurrency(client.total_exec_val)} ريال</span>
                     </div>
                 </div>
+            </div>
+
+            <div class="inspector-section">
+                <h4><i class="fa-solid fa-calculator" style="color: #6366F1;"></i> نتائج الاحتساب التلقائي والفوائض</h4>
                 
-                <div class="grid-2col">
+                <div class="grid-2col" style="row-gap: 12px; margin-bottom: 12px;">
                     <div class="info-item">
-                        <span class="info-label">قيمة أتعاب الشركة المتوقعة (${client.fees_percent * 100}%)</span>
-                        <span class="info-value currency" style="color: #F59E0B;">${formatCurrency(client.company_fees)}</span>
+                        <span class="info-label">مبلغ السداد المطلوب (الكلي)</span>
+                        <span class="info-value currency" style="font-weight: bold; color: #EF4444;">${formatCurrency(client.required_payment)} ريال</span>
+                        <span style="font-size: 9px; color: var(--text-secondary); display: block;">(= المديونيات + التنفيذات)</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">إجمالي الفائض المالي</span>
-                        <span class="info-value currency" style="color: ${client.gross_surplus > 0 ? '#10B981' : '#EF4444'};">${formatCurrency(client.gross_surplus)}</span>
+                        <span class="info-label">قيمة أتعاب الشركة الفعلية</span>
+                        <span class="info-value currency" style="font-weight: bold; color: #F59E0B;">${formatCurrency(client.company_fees)} ريال</span>
+                        <span style="font-size: 9px; color: var(--text-secondary); display: block;">(= التمويل × نسبة الأتعاب)</span>
                     </div>
-                    <div class="info-item" style="grid-column: span 2; background: rgba(0,0,0,0.15); padding: 12px; border-radius: 8px; margin-top: 8px; display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
-                        <div>
-                            <span class="info-label" style="display: block;">صافي الفائض للعميل (المتبقي بجيبه)</span>
-                            <span class="info-value currency" style="color: ${client.net_surplus > 0 ? '#10B981' : '#EF4444'}; font-size: 16px;">${formatCurrency(client.net_surplus)}</span>
-                        </div>
-                        <div style="text-align: left;">
-                            <span class="info-label" style="display: block;">قرار الجدوى</span>
-                            <span class="info-value" style="color: var(--text-primary); font-size: 13px; font-weight: bold;">${client.feasibility_decision}</span>
-                        </div>
+                    
+                    <div class="info-item" style="grid-column: span 2; background: rgba(0,0,0,0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                        <span class="info-label">الفائض الإجمالي المتوقع</span>
+                        <span class="info-value currency" style="font-weight: bold; color: ${client.gross_surplus > 0 ? '#10B981' : '#EF4444'};">${formatCurrency(client.gross_surplus)} ريال</span>
+                        <span style="font-size: 9px; color: var(--text-secondary); display: block;">(= التمويل المتوقع - مبلغ السداد المطلوب)</span>
+                    </div>
+                </div>
+
+                <div class="grid-2col" style="background: rgba(16,185,129,0.05); padding: 12px; border-radius: 8px; border: 1px solid rgba(16,185,129,0.15); display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-top: 12px;">
+                    <div>
+                        <span class="info-label" style="display: block; font-weight: bold; color: var(--text-primary);">صافي الفائض للعميل (المتبقي)</span>
+                        <span class="info-value currency" style="color: ${client.net_surplus > 0 ? '#10B981' : '#EF4444'}; font-size: 16px; font-weight: 800;">${formatCurrency(client.net_surplus)} ريال</span>
+                        <span style="font-size: 9px; color: var(--text-secondary); display: block;">(= الفائض الإجمالي - أتعاب الشركة)</span>
+                    </div>
+                    <div style="text-align: left;">
+                        <span class="info-label" style="display: block; font-weight: bold;">قرار الجدوى</span>
+                        <span class="info-value" style="color: ${client.net_surplus > 0 ? '#10B981' : '#EF4444'}; font-size: 13px; font-weight: bold;">${client.feasibility_decision}</span>
                     </div>
                 </div>
             </div>
