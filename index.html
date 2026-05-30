@@ -35,7 +35,14 @@
             <div class="menu-item" onclick="refreshDashboard()">
                 <i class="fa-solid fa-arrow-rotate-forward"></i> مزامنة شيت Excel
             </div>
+            <div class="menu-item" onclick="downloadExcelFile()">
+                <i class="fa-solid fa-file-arrow-down"></i> تحميل ملف Excel
+            </div>
+            <div class="menu-item" onclick="triggerExcelUpload()">
+                <i class="fa-solid fa-file-arrow-up"></i> رفع شيت Excel محدّث
+            </div>
         </nav>
+        <input type="file" id="excel-file-upload-input" style="display: none;" accept=".xlsx, .xls" onchange="uploadExcelFile(this)">
         
         <div style="margin-top: auto; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; font-size: 11px; text-align: center;">
             <div style="font-weight: bold; color: var(--primary);"><i class="fa-solid fa-database"></i> شيت Excel متصل</div>
@@ -573,7 +580,7 @@
     
     <!-- Detailed Client Inspector Modal -->
     <div class="modal" id="detail-modal">
-        <div class="modal-content" style="max-width: 950px; background: #0D1326; border-radius: 16px;">
+        <div class="modal-content" style="max-width: 1080px; background: #0D1326; border-radius: 16px;">
             <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
                 <h3 class="modal-title" style="margin: 0; font-size: 16px; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
                     <i class="fa-solid fa-magnifying-glass-chart" style="color: var(--primary);"></i>
@@ -582,18 +589,29 @@
                 <span class="modal-close" onclick="closeDetailModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary); transition: color 0.2s ease;">&times;</span>
             </div>
             <div class="modal-body" style="padding: 24px; overflow-y: auto; max-height: calc(85vh - 70px);">
-                <!-- Immersive Navigation Tabs -->
-                <div class="inspector-tabs" id="inspector-tab-headers" style="display: none; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; display: flex; gap: 8px;">
-                    <button class="tab-btn active" id="tab-btn-personal" onclick="switchInspectorTab('personal')">العميل والمديونيات</button>
-                    <button class="tab-btn" id="tab-btn-risk" onclick="switchInspectorTab('risk')">محرك المخاطر</button>
-                    <button class="tab-btn" id="tab-btn-feasibility" onclick="switchInspectorTab('feasibility')">الجدوى والفوائض</button>
-                    <button class="tab-btn" id="tab-btn-workflow" onclick="switchInspectorTab('workflow')">الاعتمادات</button>
-                </div>
-                
-                <div class="inspector-detail" id="inspector-content">
-                    <div class="empty-placeholder">
-                        <div class="empty-icon"><i class="fa-solid fa-user-check"></i></div>
-                        <div class="empty-title">لم يتم اختيار أي ملف عميل</div>
+                <!-- Split Grid Layout -->
+                <div class="inspector-grid">
+                    <!-- Right Side: Decision & Actions (Sticky) -->
+                    <div id="inspector-decision-sidebar" style="display: flex; flex-direction: column; gap: 20px;">
+                        <!-- Will be populated by JS -->
+                    </div>
+                    
+                    <!-- Left Side: Tab Headers & Content -->
+                    <div style="display: flex; flex-direction: column; min-width: 0;">
+                        <!-- Immersive Navigation Tabs -->
+                        <div class="inspector-tabs" id="inspector-tab-headers" style="display: none; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; display: flex; gap: 8px;">
+                            <button class="tab-btn active" id="tab-btn-personal" onclick="switchInspectorTab('personal')">العميل والمديونيات</button>
+                            <button class="tab-btn" id="tab-btn-risk" onclick="switchInspectorTab('risk')">محرك المخاطر</button>
+                            <button class="tab-btn" id="tab-btn-feasibility" onclick="switchInspectorTab('feasibility')">الجدوى والفوائض</button>
+                            <button class="tab-btn" id="tab-btn-workflow" onclick="switchInspectorTab('workflow')">الاعتمادات</button>
+                        </div>
+                        
+                        <div class="inspector-detail" id="inspector-content">
+                            <div class="empty-placeholder">
+                                <div class="empty-icon"><i class="fa-solid fa-user-check"></i></div>
+                                <div class="empty-title">لم يتم اختيار أي ملف عميل</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

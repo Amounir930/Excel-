@@ -259,6 +259,7 @@ function selectClient(client, openModal = false) {
     document.getElementById('inspector-tab-headers').style.display = 'flex';
     
     const inspector = document.getElementById('inspector-content');
+    const sidebar = document.getElementById('inspector-decision-sidebar');
     
     // Set Decision Class
     let decisionClass = 'rejected';
@@ -272,38 +273,52 @@ function selectClient(client, openModal = false) {
     else if (client.risk_level.includes("عالية")) riskClass = 'orange';
     else if (client.risk_level.includes("متوسطة")) riskClass = 'yellow';
     
-    inspector.innerHTML = `
-        <!-- Decision Box -->
-        <div class="decision-result-box ${decisionClass}">
-            <span class="info-label" style="color: inherit; opacity: 0.85; margin-bottom: 2px;">القرار الائتماني النهائي</span>
-            <div class="decision-title">${client.decision}</div>
-            <div class="decision-reasons">${client.brief_reasons}</div>
-            
-            <div class="score-badge-circle" style="border-color: ${
-                decisionClass === 'qualified' ? '#10B981' : decisionClass === 'reserved' ? '#F59E0B' : decisionClass === 'exception' ? '#F97316' : '#EF4444'
-            };">
-                <h5>${client.total_pts}</h5>
-                <span>نقاط الجدارة /105</span>
-            </div>
-            
-            <div style="font-size: 11px; font-weight: bold; color: var(--text-secondary);">
-                نسبة الجدارة: ${client.score_pct}% | تصنيف: [${client.classification}]
-            </div>
-        </div>
-        
-        <!-- Action Buttons -->
-        <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
-            <button class="btn btn-secondary" style="flex: 1; min-width: 120px; font-size: 12px; padding: 8px 12px;" onclick="openEditClientModal()">
-                <i class="fa-solid fa-user-gear"></i> تعديل ملف العميل
-            </button>
-            <button class="btn btn-primary" style="flex: 1.5; min-width: 150px; font-size: 12px; padding: 8px 12px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); border: none; box-shadow: 0 4px 12px rgba(16,185,129,0.2);" onclick="printExecutionOrder()">
-                <i class="fa-solid fa-print"></i> أمر تنفيذ عملية سداد (PDF)
-            </button>
-            <button class="btn btn-secondary" style="flex: 0.8; min-width: 80px; font-size: 12px; padding: 8px 12px; border-color: rgba(239, 68, 68, 0.3); color: #EF4444;" onclick="deleteClientFile(${client.row_idx})">
-                <i class="fa-solid fa-trash-can"></i> حذف
-            </button>
-        </div>
+    // Populate Decision Sidebar
+    if (sidebar) {
+        sidebar.innerHTML = `
+            <!-- Decision Box -->
+            <div class="decision-result-box ${decisionClass}" style="margin-bottom: 0; padding: 20px; width: 100%;">
+                <span class="info-label" style="color: inherit; opacity: 0.8; margin-bottom: 6px; font-size: 11px; text-transform: uppercase;">القرار الائتماني النهائي</span>
+                <div class="decision-title" style="font-size: 26px; font-weight: 900; margin-bottom: 8px;">${client.decision}</div>
+                
+                <!-- Score & Percent Row -->
+                <div style="display: flex; align-items: center; gap: 16px; margin: 12px 0;">
+                    <div class="score-badge-circle" style="width: 70px; height: 70px; border-width: 4px; margin: 0; border-color: ${
+                        decisionClass === 'qualified' ? '#10B981' : decisionClass === 'reserved' ? '#F59E0B' : decisionClass === 'exception' ? '#F97316' : '#EF4444'
+                    };">
+                        <h5 style="font-size: 18px;">${client.total_pts}</h5>
+                        <span style="font-size: 8px;">نقطة</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-family: 'Outfit'; font-size: 20px; font-weight: 800; color: var(--text-primary);">${client.score_pct}%</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">نسبة الجدارة الائتمانية</div>
+                    </div>
+                </div>
 
+                <div style="font-size: 11.5px; font-weight: 700; background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 20px; margin-bottom: 12px; display: inline-block;">
+                    التصنيف الائتماني: [${client.classification}]
+                </div>
+                
+                <div class="decision-reasons" style="font-size: 11px; padding: 10px 12px; border-radius: 8px; text-align: right; width: 100%; border: 1px solid rgba(255,255,255,0.05);">${client.brief_reasons}</div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                <button class="btn btn-secondary" style="width: 100%; font-size: 12.5px; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="openEditClientModal()">
+                    <i class="fa-solid fa-user-gear"></i> تعديل ملف العميل
+                </button>
+                <button class="btn btn-primary" style="width: 100%; font-size: 12.5px; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); border: none; box-shadow: 0 4px 12px rgba(16,185,129,0.2);" onclick="printExecutionOrder()">
+                    <i class="fa-solid fa-print"></i> أمر تنفيذ عملية سداد (PDF)
+                </button>
+                <button class="btn btn-secondary" style="width: 100%; font-size: 12.5px; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; border-color: rgba(239, 68, 68, 0.3); color: #EF4444;" onclick="deleteClientFile(${client.row_idx})">
+                    <i class="fa-solid fa-trash-can"></i> حذف الملف
+                </button>
+            </div>
+        `;
+    }
+    
+    // Populate Tab Content
+    inspector.innerHTML = `
         <!-- Tab Content 1: Personal & Debts -->
         <div class="tab-content" id="tab-content-personal">
             <div class="inspector-section">
@@ -840,6 +855,8 @@ function filterClientsTable(query) {
 // Render empty inspector placeholder
 function renderEmptyInspector() {
     document.getElementById('inspector-tab-headers').style.display = 'none';
+    const sidebar = document.getElementById('inspector-decision-sidebar');
+    if (sidebar) sidebar.innerHTML = '';
     const inspector = document.getElementById('inspector-content');
     inspector.innerHTML = `
         <div class="empty-placeholder">
@@ -1824,4 +1841,52 @@ function printExecutionOrder() {
 </html>
     `);
     printWindow.document.close();
+}
+
+// Download Excel File
+function downloadExcelFile() {
+    window.open(`${API_URL}/download`, '_blank');
+    showToast("جاري تحميل ملف Excel الخاص بالنظام...", "success");
+}
+
+// Trigger hidden file input click
+function triggerExcelUpload() {
+    document.getElementById('excel-file-upload-input').click();
+}
+
+// Upload Excel File
+async function uploadExcelFile(input) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    
+    if (!confirm(`هل أنت متأكد من استبدال ملف Excel الحالي بالملف المختار: "${file.name}"؟`)) {
+        input.value = '';
+        return;
+    }
+    
+    showToast("جاري رفع وتحديث ملف Excel...", "success");
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const res = await fetch(`${API_URL}/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || "فشل تحميل الملف");
+        }
+        
+        const data = await res.json();
+        showToast(data.message || "تم تحديث ملف Excel بنجاح!", "success");
+        refreshDashboard();
+    } catch (e) {
+        console.error(e);
+        showToast(`خطأ في رفع الملف: ${e.message}`, "error");
+    } finally {
+        input.value = '';
+    }
 }

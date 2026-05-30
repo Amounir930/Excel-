@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -611,6 +611,40 @@ def delete_client(row_idx: int):
         return {"success": True, "message": "تم حذف الملف الائتماني بنجاح!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء الحذف: {e}")
+
+
+@app.get("/api/download")
+def download_excel():
+    """Endpoint to download the current Excel sheet file"""
+    if os.path.exists(EXCEL_PATH):
+        return FileResponse(EXCEL_PATH, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename="نظام_تحليل_العملاء_الائتماني.xlsx")
+    raise HTTPException(status_code=404, detail="ملف الاكسل غير موجود")
+
+
+@app.post("/api/upload")
+async def upload_excel(file: UploadFile = File(...)):
+    """Endpoint to upload/replace the current Excel sheet file"""
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="يرجى تحميل ملف Excel صالح (.xlsx, .xls)")
+    try:
+        content = await file.read()
+        
+        # Validate that the file is a valid openpyxl workbook
+        import io
+        import openpyxl
+        try:
+            openpyxl.load_workbook(io.BytesIO(content))
+        except Exception as ve:
+            raise HTTPException(status_code=400, detail=f"ملف Excel غير صالح أو تالف: {ve}")
+            
+        with open(EXCEL_PATH, "wb") as f:
+            f.write(content)
+            
+        return {"message": "تم تحميل وتحديث ملف الاكسل بنجاح"}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء تحميل الملف: {e}")
 
 
 # Serve UI Static Files
