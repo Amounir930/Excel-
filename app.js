@@ -486,6 +486,70 @@ function selectClient(client) {
                     </div>
                 </div>
             </div>
+
+            <div class="inspector-section">
+                <h4><i class="fa-solid fa-triangle-exclamation" style="color: #F59E0B;"></i> رابعاً: سياسة المخاطر وفحص الرفض المباشر</h4>
+                <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">
+                    مؤشر التدقيق التلقائي لقواعد الرفض المباشر الـ 8 المحددة بالسياسة الائتمانية:
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 8px; font-size: 11px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.default_status === 'نعم' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.default_status === 'نعم' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
+                        <span>1. خلو من التعثر القائم بـ سمة</span>
+                        <span style="font-weight: bold; color: ${client.default_status === 'نعم' ? '#EF4444' : '#10B981'};">
+                            ${client.default_status === 'نعم' ? '⚠️ متعثر' : '✓ سليم'}
+                        </span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.blacklist === 'نعم' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.blacklist === 'نعم' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
+                        <span>2. خلو من إيقاف الخدمات (Blacklist)</span>
+                        <span style="font-weight: bold; color: ${client.blacklist === 'نعم' ? '#EF4444' : '#10B981'};">
+                            ${client.blacklist === 'نعم' ? '⚠️ موقوف' : '✓ سليم'}
+                        </span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.sal_attach === 'نعم' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.sal_attach === 'نعم' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
+                        <span>3. خلو من حجز الراتب</span>
+                        <span style="font-weight: bold; color: ${client.sal_attach === 'نعم' ? '#EF4444' : '#10B981'};">
+                            ${client.sal_attach === 'نعم' ? '⚠️ محجوز' : '✓ سليم'}
+                        </span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.exec_requests_count > 8 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.exec_requests_count > 8 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
+                        <span>4. عدد طلبات التنفيذ (≤ 8 طلبات)</span>
+                        <span style="font-weight: bold; color: ${client.exec_requests_count > 8 ? '#EF4444' : '#10B981'};">
+                            ${client.exec_requests_count > 8 ? `⚠️ متجاوز (${client.exec_requests_count})` : `✓ سليم (${client.exec_requests_count})`}
+                        </span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.total_exec_val > 100000 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.total_exec_val > 100000 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
+                        <span>5. إجمالي مبالغ التنفيذ (≤ 100,000 ريال)</span>
+                        <span style="font-weight: bold; color: ${client.total_exec_val > 100000 ? '#EF4444' : '#10B981'};">
+                            ${client.total_exec_val > 100000 ? `⚠️ متجاوز (${formatCurrency(client.total_exec_val)})` : `✓ سليم (${formatCurrency(client.total_exec_val)})`}
+                        </span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.fin_exec_count > 3 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.fin_exec_count > 3 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
+                        <span>6. تنفيذات شركات التمويل (≤ 3 تنفيذات)</span>
+                        <span style="font-weight: bold; color: ${client.fin_exec_count > 3 ? '#EF4444' : '#10B981'};">
+                            ${client.fin_exec_count > 3 ? `⚠️ متجاوز (${client.fin_exec_count})` : `✓ سليم (${client.fin_exec_count})`}
+                        </span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.simah < 550 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.simah < 550 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
+                        <span>7. درجة سمة الائتمانية (≥ 550)</span>
+                        <span style="font-weight: bold; color: ${client.simah < 550 ? '#EF4444' : '#10B981'};">
+                            ${client.simah < 550 ? `⚠️ منخفضة (${client.simah})` : `✓ سليم (${client.simah})`}
+                        </span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.dti_pct > 70 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.dti_pct > 70 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
+                        <span>8. نسبة الاستقطاع المسموحة (≤ 70%)</span>
+                        <span style="font-weight: bold; color: ${client.dti_pct > 70 ? '#EF4444' : '#10B981'};">
+                            ${client.dti_pct > 70 ? `⚠️ متجاوز (${client.dti_pct}%)` : `✓ سليم (${client.dti_pct}%)`}
+                        </span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Tab Content 3: Feasibility & Surpluses -->
