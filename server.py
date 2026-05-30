@@ -67,6 +67,9 @@ class ClientData(BaseModel):
     
     # Fee %
     fees_percent: float = Field(0.10)
+    
+    # Workflow Stage
+    workflow_stage: str = Field("جديد", description="Workflow Stage")
 
 
 def calculate_client_metrics(c: dict) -> dict:
@@ -252,6 +255,7 @@ def calculate_client_metrics(c: dict) -> dict:
         "net_surplus": net_surplus,
         "feasibility_decision": feasibility_decision,
         
+        "workflow_stage": c.get("workflow_stage", "جديد"),
         "row_idx": c.get("row_idx", -1)
     }
 
@@ -322,7 +326,8 @@ def read_clients_from_excel() -> list:
             "bank_exec_total": float(sh3[f"J{r}"].value or 0.0),
             
             # Feasibility %
-            "fees_percent": float(sh5[f"J{r}"].value or 0.10)
+            "fees_percent": float(sh5[f"J{r}"].value or 0.10),
+            "workflow_stage": str(sh1[f"R{r}"].value or "جديد")
         }
         
         # Calculate full metrics
@@ -371,7 +376,7 @@ def write_client_to_excel(c: dict, target_row: int = -1) -> int:
     # Write formulas for sheet 1 col A, B, R if not present
     sh1[f"A{r}"] = f'=IF(C{r}<>"","ملف-"&TEXT(ROW()-3,"000"),"")'
     sh1[f"B{r}"] = f'=IF(C{r}<>"",TODAY(),"")'
-    sh1[f"R{r}"] = f'=IF(C{r}<>"","جديد","")'
+    sh1[f"R{r}"] = c.get("workflow_stage", "جديد")
 
     # Write sheet 2 fields
     sh2[f"C{r}"] = c["loans_count"]

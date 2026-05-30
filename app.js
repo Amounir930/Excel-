@@ -643,20 +643,74 @@ function selectClient(client) {
             </div>
             
             <div class="inspector-section">
-                <h4><i class="fa-solid fa-signature" style="color: #818CF8;"></i> Workflow ومراحل الاعتماد والـ Audit</h4>
-                <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.8; display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <span class="badge" style="background: rgba(16,185,129,0.1); color: #10B981; padding: 2px 6px;">معتمد</span>
-                        <span><strong>محلل الائتمان (أحمد عسيري):</strong> موصى به للتمويل وسداد مديونية العميل</span>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <span class="badge" style="background: rgba(16,185,129,0.1); color: #10B981; padding: 2px 6px;">معتمد</span>
-                        <span><strong>مدير العمليات (خالد الحربي):</strong> معتمد للتنفيذ ومطابقة الجدارة</span>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <span class="badge" style="background: rgba(16,185,129,0.1); color: #10B981; padding: 2px 6px;">معتمد</span>
-                        <span><strong>الإدارة المالية (فهد العتيبي):</strong> مقبول ومعتمد لصرف مبالغ السداد والمديونيات</span>
-                    </div>
+                <h4><i class="fa-solid fa-signature" style="color: #818CF8;"></i> سابعاً: Workflow ومراحل اعتماد الملف</h4>
+                <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+                    مسار تدفق مراحل دراسة الملف الائتماني والاعتمادات المالية الحالية:
+                </p>
+                <div class="workflow-timeline" style="display: flex; flex-direction: column; gap: 10px; font-size: 11px;">
+                    ${(() => {
+                        const stages = [
+                            "جديد",
+                            "تحت التحليل",
+                            "معتمد من محلل الائتمان",
+                            "معتمد من مدير العمليات",
+                            "تحت المراجعة المالية",
+                            "معتمد مالياً",
+                            "مكتمل",
+                            "مرفوض"
+                        ];
+                        const currentStage = client.workflow_stage || "جديد";
+                        const currentIndex = stages.indexOf(currentStage);
+                        
+                        return stages.map((stage, idx) => {
+                            const isCurrent = currentStage === stage;
+                            const isPassed = currentIndex !== -1 && idx < currentIndex && currentStage !== "مرفوض" && stage !== "مرفوض";
+                            const isRejectedStage = stage === "مرفوض";
+                            
+                            // Style calculation
+                            let background = 'rgba(255,255,255,0.015)';
+                            let border = '1px solid var(--border-color)';
+                            let color = 'var(--text-secondary)';
+                            let icon = '<i class="fa-regular fa-circle" style="margin-left: 8px;"></i>';
+                            
+                            if (isCurrent) {
+                                if (stage === "مرفوض") {
+                                    background = 'rgba(239, 68, 68, 0.15)';
+                                    border = '1px solid #EF4444';
+                                    color = '#EF4444';
+                                    icon = '<i class="fa-solid fa-circle-xmark" style="margin-left: 8px;"></i>';
+                                } else if (stage === "مكتمل") {
+                                    background = 'rgba(16, 185, 129, 0.15)';
+                                    border = '1px solid #10B981';
+                                    color = '#10B981';
+                                    icon = '<i class="fa-solid fa-circle-check" style="margin-left: 8px;"></i>';
+                                } else {
+                                    background = 'rgba(99, 102, 241, 0.15)';
+                                    border = '1px solid #6366F1';
+                                    color = '#818CF8';
+                                    icon = '<i class="fa-solid fa-circle-play" style="margin-left: 8px; color: #818CF8;"></i>';
+                                }
+                            } else if (isPassed) {
+                                color = '#10B981';
+                                icon = '<i class="fa-solid fa-circle-check" style="margin-left: 8px; color: #10B981;"></i>';
+                            }
+                            
+                            if (isRejectedStage && !isCurrent) {
+                                // Don't highlight rejected stage unless it is active
+                                return '';
+                            }
+                            
+                            return `
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: ${background}; border: ${border}; border-radius: 8px; color: ${color}; font-weight: ${isCurrent ? 'bold' : 'normal'};">
+                                    <div style="display: flex; align-items: center;">
+                                        ${icon}
+                                        <span>${idx + 1}- ${stage}</span>
+                                    </div>
+                                    ${isCurrent ? '<span class="badge" style="background: var(--primary); color: #fff; font-size: 9px; padding: 2px 6px;">نشط حالياً</span>' : ''}
+                                </div>
+                            `;
+                        }).join("");
+                    })()}
                 </div>
             </div>
         </div>
@@ -876,7 +930,8 @@ async function migrateViolationsToClient() {
         fin_exec_total: client.fin_exec_total,
         bank_exec_count: client.bank_exec_count,
         bank_exec_total: client.bank_exec_total,
-        fees_percent: client.fees_percent
+        fees_percent: client.fees_percent,
+        workflow_stage: client.workflow_stage || "جديد"
     };
     
     try {
@@ -1043,6 +1098,8 @@ function openNewClientModal() {
     document.getElementById('form-default').value = 'لا';
     document.getElementById('form-blacklist').value = 'لا';
     document.getElementById('form-sal-attach').value = 'لا';
+    document.getElementById('form-workflow').value = 'جديد';
+
     
     document.getElementById('form-loans-cnt').value = 0;
     document.getElementById('form-loans-tot').value = 0;
@@ -1108,6 +1165,8 @@ function openEditClientModal() {
     document.getElementById('form-exec-bank-cnt').value = selectedClient.bank_exec_count;
     document.getElementById('form-exec-bank-tot').value = selectedClient.bank_exec_total;
     document.getElementById('form-fees-pct').value = selectedClient.fees_percent.toFixed(2);
+    document.getElementById('form-workflow').value = selectedClient.workflow_stage || 'جديد';
+
 
     document.getElementById('client-modal').classList.add('active');
 }
@@ -1156,7 +1215,8 @@ async function handleFormSubmit(e) {
         fin_exec_total: parseFloat(document.getElementById('form-exec-fin-tot').value || 0),
         bank_exec_count: parseInt(document.getElementById('form-exec-bank-cnt').value || 0),
         bank_exec_total: parseFloat(document.getElementById('form-exec-bank-tot').value || 0),
-        fees_percent: parseFloat(document.getElementById('form-fees-pct').value)
+        fees_percent: parseFloat(document.getElementById('form-fees-pct').value),
+        workflow_stage: document.getElementById('form-workflow').value
     };
     
     try {
