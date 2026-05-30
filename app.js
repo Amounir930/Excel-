@@ -372,37 +372,60 @@ function selectClient(client) {
         <!-- Tab Content 2: Risk Engine -->
         <div class="tab-content" id="tab-content-risk">
             <div class="inspector-section">
-                <h4><i class="fa-solid fa-circle-exclamation" style="color: #F59E0B;"></i> الالتزامات ونسبة الاستقطاع</h4>
-                <div class="grid-2col" style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--border-color);">
+                <h4><i class="fa-solid fa-circle-exclamation" style="color: #F59E0B;"></i> شاشة الالتزامات الائتمانية والمديونيات</h4>
+                
+                <div class="grid-2col" style="margin-bottom: 16px; background: rgba(0,0,0,0.15); padding: 12px; border-radius: 8px;">
                     <div class="info-item">
-                        <span class="info-label">إجمالي المديونيات</span>
-                        <span class="info-value currency" style="color: #EF4444;">${formatCurrency(client.total_debts)}</span>
+                        <span class="info-label">إجمالي الالتزامات (المديونيات)</span>
+                        <span class="info-value currency" style="color: #EF4444; font-weight: 800; font-size: 15px;">${formatCurrency(client.total_debts)} ريال</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">الأقساط الشهرية</span>
-                        <span class="info-value currency">${formatCurrency(client.monthly_installment)}</span>
+                        <span class="info-label">إجمالي الأقساط الشهرية</span>
+                        <span class="info-value currency" style="color: var(--primary); font-weight: 800; font-size: 15px;">${formatCurrency(client.monthly_installment)} ريال</span>
                     </div>
-                    <div class="info-item">
-                        <span class="info-label">نسبة الاستقطاع (DTI)</span>
-                        <span class="info-value" style="color: ${client.dti_pct > 70 ? '#EF4444' : client.dti_pct > 50 ? '#F97316' : '#10B981'};">${client.dti_pct}%</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">مستوى المخاطرة الائتمانية</span>
-                        <span class="info-value"><span class="badge-risk ${riskClass}">${client.risk_level.split(" ").slice(0,-1).join(" ")}</span></span>
+                    <div class="info-item" style="grid-column: span 2; border-top: 1px dashed var(--border-color); padding-top: 8px; margin-top: 8px;">
+                        <span class="info-label" style="display: block; margin-bottom: 2px;">نسبة الاستقطاع الاحتسابية (DTI)</span>
+                        <span class="info-value" style="font-size: 14px; font-family: 'Outfit'; font-weight: bold; color: ${client.dti_pct > 70 ? '#EF4444' : client.dti_pct > 50 ? '#F97316' : '#10B981'};">
+                            ${client.dti_pct}% <span style="font-size: 11px; font-weight: normal; color: var(--text-secondary);">(= ${formatCurrency(client.monthly_installment)} ÷ ${formatCurrency(client.net_sal)} × 100)</span>
+                        </span>
                     </div>
                 </div>
-                <div class="grid-2col" style="font-size: 11px;">
+
+                <div class="grid-2col" style="font-size: 11px; row-gap: 8px;">
                     <div class="info-item">
-                        <span class="info-label">القروض / البطاقات</span>
-                        <span class="info-value" style="font-weight: 500;">
-                            ${client.loans_count} شخصي (${formatCurrency(client.loans_total)}) | ${client.cards_count} بطاقات (${formatCurrency(client.cards_total)})
-                        </span>
+                        <span class="info-label">عدد القروض الشخصية</span>
+                        <span class="info-value">${client.loans_count} قروض</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">العقاري / شركات التمويل</span>
-                        <span class="info-value" style="font-weight: 500;">
-                            ${client.real_estate_count} عقاري (${formatCurrency(client.real_estate_total)}) | ${client.finance_cos_count} شركات (${formatCurrency(client.finance_cos_total)})
-                        </span>
+                        <span class="info-label">إجمالي القروض الشخصية</span>
+                        <span class="info-value currency">${formatCurrency(client.loans_total)} ريال</span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">عدد التمويلات العقارية</span>
+                        <span class="info-value">${client.real_estate_count} تمويل</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">إجمالي التمويل العقاري</span>
+                        <span class="info-value currency">${formatCurrency(client.real_estate_total)} ريال</span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">عدد البطاقات الائتمانية</span>
+                        <span class="info-value">${client.cards_count} بطاقات</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">إجمالي مبالغ البطاقات</span>
+                        <span class="info-value currency">${formatCurrency(client.cards_total)} ريال</span>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-label">عدد قروض شركات التمويل</span>
+                        <span class="info-value">${client.finance_cos_count} شركات</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">إجمالي قروض شركات التمويل</span>
+                        <span class="info-value currency">${formatCurrency(client.finance_cos_total)} ريال</span>
                     </div>
                 </div>
             </div>
