@@ -10,6 +10,25 @@ let currentInspectorTab = 'personal';
 let classificationChart = null;
 let financialChart = null;
 
+// Violations Database
+const violationsList = [
+    { id: 1, name: "تجاوز الإشارة الحمراء", basic: 3000, count: 0 },
+    { id: 2, name: "القيادة عكس الاتجاه", basic: 6000, count: 0 },
+    { id: 3, name: "تجاوز السرعة بأكثر من 25 كم/س", basic: 900, count: 0 },
+    { id: 4, name: "تجاوز السرعة بأقل من 25 كم/س", basic: 500, count: 0 },
+    { id: 5, name: "استخدام الجوال أثناء القيادة", basic: 500, count: 0 },
+    { id: 6, name: "عدم ربط حزام الأمان", basic: 150, count: 0 },
+    { id: 7, name: "القيادة بدون رخصة سارية", basic: 900, count: 0 },
+    { id: 8, name: "القيادة تحت تأثير المسكرات/المخدرات", basic: 9000, count: 0 },
+    { id: 9, name: "طمس لوحات المركبة", basic: 3000, count: 0 },
+    { id: 10, name: "الوقوف في أماكن ذوي الإعاقة", basic: 1000, count: 0 },
+    { id: 11, name: "عدم إعطاء أفضلية المرور للمشاة", basic: 500, count: 0 },
+    { id: 12, name: "تغيير المسار بشكل مفاجئ", basic: 300, count: 0 },
+    { id: 13, name: "عدم استخدام إشارات الانعطاف", basic: 150, count: 0 },
+    { id: 14, name: "تأخير تجديد رخصة القيادة", basic: 100, count: 0 },
+    { id: 15, name: "عدم تثبيت الحمولة أو تغطيتها", basic: 500, count: 0 }
+];
+
 // On Page Load
 document.addEventListener("DOMContentLoaded", () => {
     refreshDashboard();
@@ -46,6 +65,38 @@ function showToast(message, type = 'success') {
         toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, 4000);
+}
+
+// Switch Sidebar sections
+function showSection(sectionId) {
+    // Manage Sidebar active menu styling
+    document.querySelectorAll('.sidebar-menu .menu-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    const activeItem = document.getElementById(`menu-${sectionId}`);
+    if (activeItem) activeItem.classList.add('active');
+    
+    // Toggle Section visibility
+    const dashboardGrid = document.querySelector('.kpi-grid');
+    const chartsSection = document.querySelector('.charts-section');
+    const mainDashboardLayout = document.querySelector('.dashboard-layout');
+    const violationsSection = document.getElementById('violations-calculator-section');
+    
+    if (sectionId === 'dashboard') {
+        dashboardGrid.style.display = 'grid';
+        chartsSection.style.display = 'grid';
+        mainDashboardLayout.style.display = 'grid';
+        violationsSection.style.display = 'none';
+    } else if (sectionId === 'violations') {
+        dashboardGrid.style.display = 'none';
+        chartsSection.style.display = 'none';
+        mainDashboardLayout.style.display = 'none';
+        violationsSection.style.display = 'block';
+        
+        renderViolationsTable();
+        populateViolationsClients();
+    }
 }
 
 // Fetch stats and clients from API
@@ -439,7 +490,6 @@ function selectClient(client) {
         </div>
     `;
     
-    // Reset tab navigation active states and show selected tab content
     switchInspectorTab(currentInspectorTab);
 }
 
@@ -447,21 +497,17 @@ function selectClient(client) {
 function switchInspectorTab(tabId) {
     currentInspectorTab = tabId;
     
-    // Reset Tab button active states
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     
-    // Reset all tab content visibilities
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
     });
     
-    // Set active tab button state
     const activeBtn = document.getElementById(`tab-btn-${tabId}`);
     if (activeBtn) activeBtn.classList.add('active');
     
-    // Display targeted tab content container
     const activeContent = document.getElementById(`tab-content-${tabId}`);
     if (activeContent) activeContent.classList.add('active');
 }
@@ -479,11 +525,221 @@ function renderEmptyInspector() {
     `;
 }
 
+// Render Traffic Violations Calculator list
+function renderViolationsTable() {
+    const tbody = document.getElementById('violations-tbody');
+    tbody.innerHTML = '';
+    
+    const discountType = document.getElementById('violations-discount-select').value;
+    
+    violationsList.forEach(v => {
+        const tr = document.createElement('tr');
+        
+        // Compute discount & due for this violation row
+        const rowGross = v.basic * v.count;
+        let rowDiscount = "بدون تخفيض";
+        let rowDue = rowGross;
+        
+        if (v.count > 0) {
+            if (discountType === '50') {
+                rowDiscount = "خصم 50% مبادرة";
+                rowDue = rowGross * 0.5;
+            } else if (discountType === '25') {
+                rowDiscount = "خصم 25% سداد مبكر";
+                rowDue = rowGross * 0.75;
+            }
+        }
+        
+        tr.innerHTML = `
+            <td style="font-weight: bold; padding: 12px 16px;">${v.name}</td>
+            <td style="text-align: center; font-family: 'Outfit';">${formatCurrency(v.basic)} ريال</td>
+            <td style="text-align: center; width: 140px;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <button class="btn btn-secondary" style="padding: 4px 10px; font-weight: bold; border-radius: 6px;" type="button" onclick="adjustViolCount(${v.id}, -1)">-</button>
+                    <span style="font-family: 'Outfit'; font-weight: 700; font-size: 15px; width: 25px; text-align: center;">${v.count}</span>
+                    <button class="btn btn-secondary" style="padding: 4px 10px; font-weight: bold; border-radius: 6px;" type="button" onclick="adjustViolCount(${v.id}, 1)">+</button>
+                </div>
+            </td>
+            <td style="text-align: center;">
+                <span class="badge ${v.count > 0 && discountType !== 'none' ? 'badge-qualified' : 'badge-risk'}" style="font-size: 11px;">
+                    ${rowDiscount}
+                </span>
+            </td>
+            <td style="text-align: center; font-family: 'Outfit'; font-weight: 700; color: #818CF8;">${formatCurrency(rowDue)} ريال</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    updateViolationsCalc();
+}
+
+// Adjust violation count
+function adjustViolCount(id, amount) {
+    const v = violationsList.find(x => x.id === id);
+    if (v) {
+        v.count = Math.max(0, v.count + amount);
+        renderViolationsTable();
+    }
+}
+
+// Update violations calculation totals
+function updateViolationsCalc() {
+    const discountType = document.getElementById('violations-discount-select').value;
+    
+    let totalGross = 0;
+    let totalDue = 0;
+    
+    violationsList.forEach(v => {
+        const rowGross = v.basic * v.count;
+        totalGross += rowGross;
+        
+        if (discountType === '50') {
+            totalDue += rowGross * 0.5;
+        } else if (discountType === '25') {
+            totalDue += rowGross * 0.75;
+        } else {
+            totalDue += rowGross;
+        }
+    });
+    
+    const totalSaved = totalGross - totalDue;
+    
+    // Render sums
+    document.getElementById('viol-total-due').innerHTML = `${formatCurrency(totalDue)} <span style="font-size: 14px; font-weight: normal; color: var(--text-secondary);">ريال</span>`;
+    document.getElementById('viol-total-gross').textContent = `${formatCurrency(totalGross)} ريال`;
+    document.getElementById('viol-total-saved').textContent = `${formatCurrency(totalSaved)} ريال`;
+}
+
+// Populate target client select dropdown in violations
+function populateViolationsClients() {
+    const select = document.getElementById('viol-client-select');
+    select.innerHTML = '<option value="">-- اختر ملف العميل --</option>';
+    
+    clientsData.forEach(c => {
+        const option = document.createElement('option');
+        option.value = c.row_idx;
+        option.textContent = `${c.file_id} - ${c.name}`;
+        
+        if (selectedClient && selectedClient.row_idx === c.row_idx) {
+            option.selected = true;
+        }
+        
+        select.appendChild(option);
+    });
+}
+
+// Migrate violation amounts as debt to the client
+async function migrateViolationsToClient() {
+    const select = document.getElementById('viol-client-select');
+    const targetRowIdx = parseInt(select.value);
+    
+    if (isNaN(targetRowIdx)) {
+        showToast("يرجى اختيار ملف العميل لترحيل المبالغ إليه!", "error");
+        return;
+    }
+    
+    // Calculate total violations due
+    const discountType = document.getElementById('violations-discount-select').value;
+    let totalDue = 0;
+    
+    violationsList.forEach(v => {
+        const rowGross = v.basic * v.count;
+        if (discountType === '50') totalDue += rowGross * 0.5;
+        else if (discountType === '25') totalDue += rowGross * 0.75;
+        else totalDue += rowGross;
+    });
+    
+    if (totalDue === 0) {
+        showToast("إجمالي مبالغ المخالفات 0 ريال! يرجى إدخال مخالفات أولاً.", "error");
+        return;
+    }
+    
+    const client = clientsData.find(c => c.row_idx === targetRowIdx);
+    if (!client) {
+        showToast("لم يتم العثور على ملف العميل المحدد.", "error");
+        return;
+    }
+    
+    if (!confirm(`هل أنت متأكد من رغبتك في ترحيل مبلغ ${formatCurrency(totalDue)} ريال كالتزام إضافي قضائي (تنفيذات) في ملف العميل: ${client.name}؟`)) {
+        return;
+    }
+    
+    // We add the traffic violations directly to the existing exec_requests_total (Judicial Executions)
+    // and also increase the exec_requests_count (violations represents new executions/claims)
+    const newExecTotal = client.exec_requests_total + totalDue;
+    const newExecCount = client.exec_requests_count + violationsList.filter(v => v.count > 0).reduce((sum, v) => sum + v.count, 0);
+    
+    const body = {
+        name: client.name,
+        id_num: client.id_num,
+        mobile: client.mobile,
+        age: client.age,
+        employer: client.employer,
+        emp_type: client.emp_type,
+        basic_sal: client.basic_sal,
+        gross_sal: client.gross_sal,
+        net_sal: client.net_sal,
+        svc_months: client.svc_months,
+        simah: client.simah,
+        inquiries: client.inquiries,
+        default_status: client.default_status,
+        blacklist: client.blacklist,
+        sal_attach: client.sal_attach,
+        
+        loans_count: client.loans_count,
+        loans_total: client.loans_total,
+        real_estate_count: client.real_estate_count,
+        real_estate_total: client.real_estate_total,
+        cards_count: client.cards_count,
+        cards_total: client.cards_total,
+        finance_cos_count: client.finance_cos_count,
+        finance_cos_total: client.finance_cos_total,
+        monthly_installment: client.monthly_installment,
+        
+        exec_requests_count: newExecCount,
+        exec_requests_total: newExecTotal,
+        ind_exec_count: client.ind_exec_count,
+        ind_exec_total: client.ind_exec_total,
+        fin_exec_count: client.fin_exec_count,
+        fin_exec_total: client.fin_exec_total,
+        bank_exec_count: client.bank_exec_count,
+        bank_exec_total: client.bank_exec_total,
+        fees_percent: client.fees_percent
+    };
+    
+    try {
+        const res = await fetch(`${API_URL}/clients`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+            showToast(`تم ترحيل مديونية المخالفات بنجاح وإعادة احتساب الملاءة للعميل في Excel!`, "success");
+            
+            // Reset violations count
+            violationsList.forEach(v => v.count = 0);
+            renderViolationsTable();
+            
+            // Go back to main dashboard view & auto-select that client to see updated risk!
+            showSection('dashboard');
+            selectedClient = data.client;
+            
+            await refreshDashboard();
+        } else {
+            showToast(data.detail || "حدث خطأ أثناء ترحيل المخالفات.", "error");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("فشل الاتصال بالخادم لترحيل البيانات.", "error");
+    }
+}
+
 // Initialize / Render Chart.js Premium Charts in Dark Mode
 function initCharts(clients) {
     if (clients.length === 0) return;
     
-    // Draw 1: Classification Distribution Chart (Pie)
     let qualifiedCount = 0;
     let reservedCount = 0;
     let exceptionCount = 0;
@@ -506,10 +762,10 @@ function initCharts(clients) {
             datasets: [{
                 data: [qualifiedCount, reservedCount, exceptionCount, rejectedCount],
                 backgroundColor: [
-                    '#10B981', // green
-                    '#F59E0B', // amber
-                    '#F97316', // orange
-                    '#EF4444'  // red
+                    '#10B981',
+                    '#F59E0B',
+                    '#F97316',
+                    '#EF4444'
                 ],
                 borderColor: '#111827',
                 borderWidth: 2
@@ -532,8 +788,7 @@ function initCharts(clients) {
         }
     });
     
-    // Draw 2: Financial Comparison Bar Chart
-    const clientNames = clients.slice(0, 5).map(c => c.name.split(" ")[0]); // take first names of first 5 clients
+    const clientNames = clients.slice(0, 5).map(c => c.name.split(" ")[0]);
     const expectedFundings = clients.slice(0, 5).map(c => c.expected_funding);
     const requiredPayments = clients.slice(0, 5).map(c => c.required_payment);
     const netSurpluses = clients.slice(0, 5).map(c => c.net_surplus);

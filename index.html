@@ -23,8 +23,11 @@
         </div>
         
         <nav class="sidebar-menu">
-            <div class="menu-item active" onclick="refreshDashboard()">
+            <div class="menu-item active" id="menu-dashboard" onclick="showSection('dashboard')">
                 <i class="fa-solid fa-house-chimney"></i> لوحة التحكم التنفيذية
+            </div>
+            <div class="menu-item" id="menu-violations" onclick="showSection('violations')">
+                <i class="fa-solid fa-traffic-light"></i> حاسبة المخالفات المرورية
             </div>
             <div class="menu-item" onclick="openNewClientModal()">
                 <i class="fa-solid fa-user-plus"></i> إضافة ملف جديد
@@ -214,6 +217,100 @@
 
         </main>
         
+        <!-- Interactive Violations Calculator Section -->
+        <section id="violations-calculator-section" style="display: none; margin-top: 24px;">
+            <!-- Violations Header card -->
+            <div class="panel-card" style="margin-bottom: 24px;">
+                <div class="panel-title">
+                    <span><i class="fa-solid fa-traffic-light" style="color: #EF4444;"></i> حاسبة المخالفات المرورية السعودية الجديدة</span>
+                    <span class="badge badge-qualified" style="font-weight: 600;">نظام المرور الجديد 1445/1446</span>
+                </div>
+                <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                    قم باحتساب المخالفات المرورية المسجلة على العميل لتسويتها أو ترحيلها مباشرة كالتزام مالي ضمن دراسة الجدوى الائتمانية. يدعم النظام تخفيض المبادرة التاريخية (50%) وتخفيض السداد المبكر (25%).
+                </p>
+            </div>
+
+            <div class="dashboard-layout">
+                <!-- Right side: The violations input grid -->
+                <div class="panel-card" style="padding: 20px;">
+                    <div class="panel-title" style="margin-bottom: 16px;">
+                        <span>قائمة المخالفات المرورية والغرامات</span>
+                        
+                        <!-- Discount Dropdown -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="form-label" style="font-size: 11px; margin-bottom: 0;">نوع الخصم النشط:</label>
+                            <select id="violations-discount-select" class="form-input" style="width: 220px; padding: 6px 12px;" onchange="updateViolationsCalc()">
+                                <option value="none">بدون تخفيض (القيمة الكاملة)</option>
+                                <option value="50">خصم 50% (المبادرة التاريخية)</option>
+                                <option value="25">خصم 25% (السداد المبكر خلال 30 يوم)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table class="client-table" id="violations-table">
+                            <thead>
+                                <tr>
+                                    <th>نوع المخالفة المرورية</th>
+                                    <th style="text-align: center;">الغرامة الأساسية</th>
+                                    <th style="text-align: center;">العدد</th>
+                                    <th style="text-align: center;">الخصم المطبق</th>
+                                    <th style="text-align: center;">المبلغ المستحق</th>
+                                </tr>
+                            </thead>
+                            <tbody id="violations-tbody">
+                                <!-- JS populated 15 violations -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Left side: Calculations & Migration -->
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <div class="panel-card" style="padding: 24px;">
+                        <div class="panel-title"><span>ملخص حسابات المخالفات</span></div>
+                        
+                        <div class="decision-result-box" style="background: rgba(99, 102, 241, 0.05); border: 1px solid var(--border-color); margin-bottom: 20px;">
+                            <span class="info-label" style="margin-bottom: 4px;">إجمالي المبلغ المستحق للسداد</span>
+                            <div class="decision-title" id="viol-total-due" style="font-family: 'Outfit'; color: #818CF8; font-size: 32px; font-weight: 800;">
+                                0 <span style="font-size: 16px; font-weight: normal; color: var(--text-secondary);">ريال</span>
+                            </div>
+                            
+                            <div class="grid-2col" style="width: 100%; margin-top: 16px; border-top: 1px dashed var(--border-color); padding-top: 12px; font-size: 11px;">
+                                <div class="info-item">
+                                    <span class="info-label" style="display: block; margin-bottom: 2px;">المجموع قبل الخصم</span>
+                                    <span class="info-value currency" id="viol-total-gross" style="font-family: 'Outfit'; font-size: 13px;">0</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label" style="display: block; margin-bottom: 2px;">المبلغ الموفر بالخصم</span>
+                                    <span class="info-value currency" id="viol-total-saved" style="font-family: 'Outfit'; font-size: 13px; color: #10B981;">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Migration form -->
+                        <div class="inspector-section" style="background: rgba(255,255,255,0.015);">
+                            <h4 style="margin-bottom: 8px;"><i class="fa-solid fa-file-invoice-dollar" style="color: #6366F1;"></i> ترحيل المخالفات إلى العميل</h4>
+                            <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">
+                                اختر ملف العميل النشط لدمج قيمة المخالفات كالتزام مالي وإعادة احتساب الملاءة فوراً.
+                            </p>
+                            
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label class="form-label">ملف العميل المستهدف:</label>
+                                <select id="viol-client-select" class="form-input" style="padding: 8px 12px;">
+                                    <option value="">-- اختر ملف العميل --</option>
+                                </select>
+                            </div>
+                            
+                            <button class="btn btn-primary" style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 12px;" onclick="migrateViolationsToClient()">
+                                <i class="fa-solid fa-money-bill-transfer"></i> ترحيل مديونية المخالفات للعميل
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </div>
 
     <!-- Add/Edit Client Dialog Modal -->
