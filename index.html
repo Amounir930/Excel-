@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام تحليل العملاء والجدارة الائتمانية وسداد المديونيات</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN for premium charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Premium Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fa-solid fa-shield-halved"></i>
+            <div>
+                <h2>نظام الجدارة الائتمانية</h2>
+                <span style="font-size: 11px; color: var(--text-secondary);">وساطة تمويل وسداد مديونيات</span>
+            </div>
+        </div>
+        
+        <nav class="sidebar-menu">
+            <div class="menu-item active" onclick="refreshDashboard()">
+                <i class="fa-solid fa-house-chimney"></i> لوحة التحكم التنفيذية
+            </div>
+            <div class="menu-item" onclick="openNewClientModal()">
+                <i class="fa-solid fa-user-plus"></i> إضافة ملف جديد
+            </div>
+            <div class="menu-item" onclick="refreshDashboard()">
+                <i class="fa-solid fa-arrow-rotate-forward"></i> مزامنة شيت Excel
+            </div>
+        </nav>
+        
+        <div style="margin-top: auto; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; font-size: 11px; text-align: center;">
+            <div style="font-weight: bold; color: var(--primary);"><i class="fa-solid fa-database"></i> شيت Excel متصل</div>
+            <div style="color: var(--text-secondary); margin-top: 4px; font-family: 'Outfit';">active_db: 50_clients</div>
+        </div>
+    </aside>
+
+    <!-- Main Content Panel Area -->
+    <div class="main-content">
+        
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-info">
+                <h1>نظام تحليل العملاء والجدارة الائتمانية وسداد المديونيات</h1>
+                <p>منصة التحليل المالي الذكي ومحرك تقييم المخاطر (Excel Professional Workflow System)</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openNewClientModal()">
+                    <i class="fa-solid fa-user-plus"></i> إضافة ملف جديد
+                </button>
+                <button class="btn btn-secondary" onclick="refreshDashboard()">
+                    <i class="fa-solid fa-sync"></i> تحديث البيانات
+                </button>
+            </div>
+        </header>
+
+        <!-- KPI Cards Grid -->
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">عدد الملفات النشطة</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-folder-open" style="color: #6366F1;"></i></span>
+                </div>
+                <div class="kpi-value" id="stat-files">0</div>
+                <div class="kpi-sub">إجمالي العملاء المضافين بالنظام</div>
+            </div>
+
+            <div class="kpi-card qualified">
+                <div class="kpi-header">
+                    <span class="kpi-title">عدد المؤهلين (A+B)</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-circle-check" style="color: #10B981;"></i></span>
+                </div>
+                <div class="kpi-value" id="stat-qualified" style="color: #10B981;">0</div>
+                <div class="kpi-sub">عملاء تنطبق عليهم شروط الجدارة</div>
+            </div>
+
+            <div class="kpi-card exception">
+                <div class="kpi-header">
+                    <span class="kpi-title">عدد الاستثناءات (C)</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-circle-exclamation" style="color: #F97316;"></i></span>
+                </div>
+                <div class="kpi-value" id="stat-exceptions" style="color: #F97316;">0</div>
+                <div class="kpi-sub">عملاء يحتاجون موافقة استثنائية</div>
+            </div>
+
+            <div class="kpi-card rejected">
+                <div class="kpi-header">
+                    <span class="kpi-title">عدد المرفوضين</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-circle-xmark" style="color: #EF4444;"></i></span>
+                </div>
+                <div class="kpi-value" id="stat-rejected" style="color: #EF4444;">0</div>
+                <div class="kpi-sub">مرفوض بسبب سياسة المخاطر</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">إجمالي المديونيات</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-hand-holding-dollar" style="color: #EC4899;"></i></span>
+                </div>
+                <div class="kpi-value currency" id="stat-debts">0</div>
+                <div class="kpi-sub">المديونيات المطلوب تسويتها</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">إجمالي التنفيذات القضائية</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-gavel" style="color: #3B82F6;"></i></span>
+                </div>
+                <div class="kpi-value currency" id="stat-executions">0</div>
+                <div class="kpi-sub">مبالغ طلبات محكمة التنفيذ</div>
+            </div>
+
+            <div class="kpi-card qualified">
+                <div class="kpi-header">
+                    <span class="kpi-title">الفوائض المتوقعة للعملاء</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-chart-line" style="color: #10B981;"></i></span>
+                </div>
+                <div class="kpi-value currency" id="stat-surpluses" style="color: #10B981;">0</div>
+                <div class="kpi-sub">صافي الفوائض المتبقية للعملاء</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">أتعاب الشركة المتوقعة</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-percent" style="color: #F59E0B;"></i></span>
+                </div>
+                <div class="kpi-value currency" id="stat-fees" style="color: #F59E0B;">0</div>
+                <div class="kpi-sub">العوائد المحتسبة بالنظام</div>
+            </div>
+        </section>
+
+        <!-- Charts Dashboard Grid Section -->
+        <section class="charts-section">
+            <div class="panel-card chart-card">
+                <div class="panel-title"> توزيع التصنيفات والجدارة الائتمانية للعملاء</div>
+                <div class="chart-container">
+                    <canvas id="classificationChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="panel-card chart-card">
+                <div class="panel-title">💰 مقارنة الأرقام التمويلية الإجمالية (ريال سعودي)</div>
+                <div class="chart-container">
+                    <canvas id="financialChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Workspace Layout -->
+        <main class="dashboard-layout">
+            
+            <!-- Clients List Table -->
+            <section class="panel-card">
+                <div class="panel-title">
+                    <span><i class="fa-solid fa-users-viewfinder"></i> قاعدة بيانات ملفات العملاء الفعالة</span>
+                    <span class="badge" style="background: rgba(99, 102, 241, 0.1); border: 1px solid var(--border-color); font-weight: 600; color: var(--primary);">
+                        مزامنة مباشرة مع Excel
+                    </span>
+                </div>
+                
+                <div class="table-container">
+                    <table class="client-table" id="clients-table">
+                        <thead>
+                            <tr>
+                                <th>رقم الملف</th>
+                                <th>اسم العميل</th>
+                                <th>الراتب الصافي</th>
+                                <th>درجة سمة</th>
+                                <th>الاستقطاع %</th>
+                                <th>التنفيذات</th>
+                                <th>المخاطرة</th>
+                                <th>القرار النهائي</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clients-tbody">
+                            <tr>
+                                <td colspan="8" class="empty-placeholder">
+                                    <div class="empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div>
+                                    <div class="empty-title">جاري تحميل البيانات...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Detailed Client Inspector with Elegant Tabbed Interface -->
+            <section class="panel-card" id="inspector-card">
+                <div class="panel-title">
+                    <span><i class="fa-solid fa-magnifying-glass-chart"></i> لوحة الفحص الائتماني والقرار</span>
+                </div>
+                
+                <!-- Immersive Navigation Tabs -->
+                <div class="inspector-tabs" id="inspector-tab-headers" style="display: none;">
+                    <button class="tab-btn active" id="tab-btn-personal" onclick="switchInspectorTab('personal')">العميل والمديونيات</button>
+                    <button class="tab-btn" id="tab-btn-risk" onclick="switchInspectorTab('risk')">محرك المخاطر</button>
+                    <button class="tab-btn" id="tab-btn-feasibility" onclick="switchInspectorTab('feasibility')">الجدوى والفوائض</button>
+                    <button class="tab-btn" id="tab-btn-workflow" onclick="switchInspectorTab('workflow')">الاعتمادات</button>
+                </div>
+                
+                <div class="inspector-detail" id="inspector-content">
+                    <div class="empty-placeholder">
+                        <div class="empty-icon"><i class="fa-solid fa-user-check"></i></div>
+                        <div class="empty-title">لم يتم اختيار أي ملف عميل</div>
+                        <p style="font-size: 11px; color: var(--text-secondary);">اختر ملفاً من الجدول لعرض تفاصيله، محرك المخاطر، الجدوى المالية وقرار الأهلية التفاعلي.</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+        
+    </div>
+
+    <!-- Add/Edit Client Dialog Modal -->
+    <div class="modal" id="client-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">إضافة ملف ائتماني جديد</h3>
+                <span class="modal-close" onclick="closeClientModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="client-form" onsubmit="handleFormSubmit(event)">
+                    
+                    <div class="form-grid">
+                        
+                        <!-- Section A: Client Profile -->
+                        <div class="form-divider">👤 أولاً: البيانات الأساسية للعميل</div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">اسم العميل بالكامل *</label>
+                            <input type="text" id="form-name" class="form-input" required placeholder="مثال: أحمد عبد الله الحربي">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">رقم الهوية الوطنية *</label>
+                            <input type="text" id="form-id" class="form-input" required placeholder="مثال: 1023456789" pattern="\d{10}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">رقم الجوال *</label>
+                            <input type="text" id="form-mobile" class="form-input" required placeholder="مثال: 0501234567">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">العمر *</label>
+                            <input type="number" id="form-age" class="form-input" required min="18" max="75" placeholder="مثال: 35">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">جهة العمل *</label>
+                            <input type="text" id="form-employer" class="form-input" required placeholder="وزارة التعليم، أرامكو...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">نوع جهة العمل *</label>
+                            <select id="form-emp-type" class="form-input" required>
+                                <option value="حكومي">حكومي</option>
+                                <option value="شبه حكومي">شبه حكومي</option>
+                                <option value="خاص كبير">خاص كبير</option>
+                                <option value="خاص صغير">خاص صغير</option>
+                                <option value="متقاعد">متقاعد</option>
+                                <option value="أخرى">أخرى</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">الراتب الأساسي *</label>
+                            <input type="number" id="form-basic-sal" class="form-input" required min="0" placeholder="مثال: 10000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">إجمالي الراتب *</label>
+                            <input type="number" id="form-gross-sal" class="form-input" required min="0" placeholder="مثال: 12000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">صافي الراتب *</label>
+                            <input type="number" id="form-net-sal" class="form-input" required min="0" placeholder="الراتب المحول للبنك">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">مدة الخدمة بالعمل (شهر) *</label>
+                            <input type="number" id="form-svc-months" class="form-input" required min="0" placeholder="مثال: 36">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">درجة سمة الائتمانية *</label>
+                            <input type="number" id="form-simah" class="form-input" required min="250" max="900" placeholder="مثال: 680">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">عدد الاستعلامات (90 يوم) *</label>
+                            <input type="number" id="form-inquiries" class="form-input" required min="0" placeholder="مثال: 2">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">هل يوجد تعثر قائم بـ سمة؟ *</label>
+                            <select id="form-default" class="form-input" required>
+                                <option value="لا">لا</option>
+                                <option value="نعم">نعم</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">هل يوجد إيقاف خدمات؟ *</label>
+                            <select id="form-blacklist" class="form-input" required>
+                                <option value="لا">لا</option>
+                                <option value="نعم">نعم</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">هل يوجد حجز على الراتب؟ *</label>
+                            <select id="form-sal-attach" class="form-input" required>
+                                <option value="لا">لا</option>
+                                <option value="نعم">نعم</option>
+                            </select>
+                        </div>
+
+                        <!-- Section B: Obligations / Debts -->
+                        <div class="form-divider">💳 ثانياً: شاشة الالتزامات والمديونيات</div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">عدد القروض الشخصية</label>
+                            <input type="number" id="form-loans-cnt" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">إجمالي مبلغ القروض الشخصية</label>
+                            <input type="number" id="form-loans-tot" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">عدد التمويلات العقارية</label>
+                            <input type="number" id="form-estate-cnt" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">إجمالي مبلغ التمويل العقاري</label>
+                            <input type="number" id="form-estate-tot" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">عدد البطاقات الائتمانية</label>
+                            <input type="number" id="form-cards-cnt" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">إجمالي مبالغ البطاقات</label>
+                            <input type="number" id="form-cards-tot" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">عدد قروض شركات التمويل</label>
+                            <input type="number" id="form-fin-cnt" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">إجمالي قروض شركات التمويل</label>
+                            <input type="number" id="form-fin-tot" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">إجمالي الأقساط الشهرية الحالية *</label>
+                            <input type="number" id="form-installment" class="form-input" required min="0" placeholder="مجموع الأقساط الشهرية">
+                        </div>
+
+                        <!-- Section C: Execution Orders -->
+                        <div class="form-divider">⚖️ ثالثاً: شاشة التنفيذات القضائية والنزاعات</div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">عدد طلبات التنفيذ (أمر 46)</label>
+                            <input type="number" id="form-exec-cnt" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">إجمالي مبالغ طلبات التنفيذ</label>
+                            <input type="number" id="form-exec-tot" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">عدد تنفيذات الأفراد</label>
+                            <input type="number" id="form-exec-ind-cnt" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">إجمالي مبالغ تنفيذات الأفراد</label>
+                            <input type="number" id="form-exec-ind-tot" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">عدد تنفيذات شركات التمويل</label>
+                            <input type="number" id="form-exec-fin-cnt" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">إجمالي تنفيذات شركات التمويل</label>
+                            <input type="number" id="form-exec-fin-tot" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">عدد تنفيذات البنوك</label>
+                            <input type="number" id="form-exec-bank-cnt" class="form-input" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">إجمالي تنفيذات البنوك</label>
+                            <input type="number" id="form-exec-bank-tot" class="form-input" min="0" value="0">
+                        </div>
+
+                        <!-- Section D: Company Fees -->
+                        <div class="form-divider">💰 رابعاً: دراسة الجدوى وعمولة الخدمة</div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">نسبة أتعاب الشركة *</label>
+                            <select id="form-fees-pct" class="form-input" required>
+                                <option value="0.10">10% (العرض القياسي)</option>
+                                <option value="0.12">12% (مخاطر متوسطة)</option>
+                                <option value="0.15">15% (مخاطر عالية/استثناء)</option>
+                                <option value="0.08">8% (عميل مميز)</option>
+                                <option value="0.05">5% (اتفاق خاص)</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeClientModal()">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-floppy-disk"></i> حفظ الملف وتحديث Excel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
