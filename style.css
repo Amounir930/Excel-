@@ -332,14 +332,14 @@ body {
 /* Core Dashboard Layout */
 .dashboard-layout {
     display: grid;
-    grid-template-columns: 1.8fr 1.2fr;
+    grid-template-columns: 1fr;
     gap: 24px;
 }
 
-@media (max-width: 1200px) {
-    .dashboard-layout {
-        grid-template-columns: 1fr;
-    }
+#client-search-input:focus {
+    border-color: var(--primary) !important;
+    background: rgba(99, 102, 241, 0.08) !important;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
 }
 
 /* Cards General Style */

@@ -32,6 +32,23 @@ const violationsList = [
 // On Page Load
 document.addEventListener("DOMContentLoaded", () => {
     refreshDashboard();
+    
+    // Smart Search Input Listener
+    const searchInput = document.getElementById('client-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            filterClientsTable(query);
+        });
+    }
+    
+    // Close modal when clicking outside of it
+    window.addEventListener('click', (e) => {
+        const detailModal = document.getElementById('detail-modal');
+        if (e.target === detailModal) {
+            closeDetailModal();
+        }
+    });
 });
 
 // Format numbers as Saudi Riyals
@@ -125,8 +142,8 @@ async function fetchStats() {
     
     document.getElementById('stat-debts').innerHTML = formatCurrency(stats.total_debts) + ' <span style="font-size: 11px; font-weight: normal; color: var(--text-secondary);">ريال</span>';
     document.getElementById('stat-executions').innerHTML = formatCurrency(stats.total_executions) + ' <span style="font-size: 11px; font-weight: normal; color: var(--text-secondary);">ريال</span>';
-    document.getElementById('stat-surpluses').innerHTML = formatCurrency(stats.total_surpluses) + ' <span style="font-size: 11px; font-weight: normal; color: var(--text-secondary);">ريال</span>';
-    document.getElementById('stat-fees').innerHTML = formatCurrency(stats.total_fees) + ' <span style="font-size: 11px; font-weight: normal; color: var(--text-secondary);">ريال</span>';
+    document.getElementById('stat-funding').innerHTML = formatCurrency(stats.total_funding) + ' <span style="font-size: 11px; font-weight: normal; color: var(--text-secondary);">ريال</span>';
+    document.getElementById('stat-avg-risk').textContent = stats.avg_risk_score;
 }
 
 // Fetch Client Lists
@@ -136,6 +153,10 @@ async function fetchClients() {
     const data = await res.json();
     clientsData = data;
     
+    // Reset search query on dashboard reload
+    const searchInput = document.getElementById('client-search-input');
+    if (searchInput) searchInput.value = '';
+
     renderClientsTable(data);
     initCharts(data);
     
@@ -174,7 +195,7 @@ function renderClientsTable(clients) {
     clients.forEach(c => {
         const tr = document.createElement('tr');
         tr.className = selectedClient && selectedClient.row_idx === c.row_idx ? 'active' : '';
-        tr.onclick = () => selectClient(c);
+        tr.onclick = () => selectClient(c, true);
         
         // Match Decision Badges
         let decisionBadge = '';
@@ -219,7 +240,7 @@ function renderClientsTable(clients) {
 }
 
 // Select Client & Show tabbed details
-function selectClient(client) {
+function selectClient(client, openModal = false) {
     selectedClient = client;
     
     // Update active row highlighting
@@ -271,12 +292,15 @@ function selectClient(client) {
         </div>
         
         <!-- Action Buttons -->
-        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-            <button class="btn btn-secondary" style="flex: 1; font-size: 12px; padding: 8px 12px;" onclick="openEditClientModal()">
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+            <button class="btn btn-secondary" style="flex: 1; min-width: 120px; font-size: 12px; padding: 8px 12px;" onclick="openEditClientModal()">
                 <i class="fa-solid fa-user-gear"></i> تعديل ملف العميل
             </button>
-            <button class="btn btn-secondary" style="flex: 1; font-size: 12px; padding: 8px 12px; border-color: rgba(239, 68, 68, 0.3); color: #EF4444;" onclick="deleteClientFile(${client.row_idx})">
-                <i class="fa-solid fa-trash-can"></i> حذف الملف
+            <button class="btn btn-primary" style="flex: 1.5; min-width: 150px; font-size: 12px; padding: 8px 12px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); border: none; box-shadow: 0 4px 12px rgba(16,185,129,0.2);" onclick="printExecutionOrder()">
+                <i class="fa-solid fa-print"></i> أمر تنفيذ عملية سداد (PDF)
+            </button>
+            <button class="btn btn-secondary" style="flex: 0.8; min-width: 80px; font-size: 12px; padding: 8px 12px; border-color: rgba(239, 68, 68, 0.3); color: #EF4444;" onclick="deleteClientFile(${client.row_idx})">
+                <i class="fa-solid fa-trash-can"></i> حذف
             </button>
         </div>
 
@@ -496,56 +520,56 @@ function selectClient(client) {
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.default_status === 'نعم' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.default_status === 'نعم' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
                         <span>1. خلو من التعثر القائم بـ سمة</span>
                         <span style="font-weight: bold; color: ${client.default_status === 'نعم' ? '#EF4444' : '#10B981'};">
-                            ${client.default_status === 'نعم' ? '⚠️ متعثر' : '✓ سليم'}
+                            ${client.default_status === 'نعم' ? 'متعثر' : 'سليم'}
                         </span>
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.blacklist === 'نعم' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.blacklist === 'نعم' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
                         <span>2. خلو من إيقاف الخدمات (Blacklist)</span>
                         <span style="font-weight: bold; color: ${client.blacklist === 'نعم' ? '#EF4444' : '#10B981'};">
-                            ${client.blacklist === 'نعم' ? '⚠️ موقوف' : '✓ سليم'}
+                            ${client.blacklist === 'نعم' ? 'موقوف' : 'سليم'}
                         </span>
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.sal_attach === 'نعم' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.sal_attach === 'نعم' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
                         <span>3. خلو من حجز الراتب</span>
                         <span style="font-weight: bold; color: ${client.sal_attach === 'نعم' ? '#EF4444' : '#10B981'};">
-                            ${client.sal_attach === 'نعم' ? '⚠️ محجوز' : '✓ سليم'}
+                            ${client.sal_attach === 'نعم' ? 'محجوز' : 'سليم'}
                         </span>
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.exec_requests_count > 8 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.exec_requests_count > 8 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
                         <span>4. عدد طلبات التنفيذ (≤ 8 طلبات)</span>
                         <span style="font-weight: bold; color: ${client.exec_requests_count > 8 ? '#EF4444' : '#10B981'};">
-                            ${client.exec_requests_count > 8 ? `⚠️ متجاوز (${client.exec_requests_count})` : `✓ سليم (${client.exec_requests_count})`}
+                            ${client.exec_requests_count > 8 ? `متجاوز (${client.exec_requests_count})` : `سليم (${client.exec_requests_count})`}
                         </span>
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.total_exec_val > 100000 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.total_exec_val > 100000 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
                         <span>5. إجمالي مبالغ التنفيذ (≤ 100,000 ريال)</span>
                         <span style="font-weight: bold; color: ${client.total_exec_val > 100000 ? '#EF4444' : '#10B981'};">
-                            ${client.total_exec_val > 100000 ? `⚠️ متجاوز (${formatCurrency(client.total_exec_val)})` : `✓ سليم (${formatCurrency(client.total_exec_val)})`}
+                            ${client.total_exec_val > 100000 ? `متجاوز (${formatCurrency(client.total_exec_val)})` : `سليم (${formatCurrency(client.total_exec_val)})`}
                         </span>
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.fin_exec_count > 3 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.fin_exec_count > 3 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
                         <span>6. تنفيذات شركات التمويل (≤ 3 تنفيذات)</span>
                         <span style="font-weight: bold; color: ${client.fin_exec_count > 3 ? '#EF4444' : '#10B981'};">
-                            ${client.fin_exec_count > 3 ? `⚠️ متجاوز (${client.fin_exec_count})` : `✓ سليم (${client.fin_exec_count})`}
+                            ${client.fin_exec_count > 3 ? `متجاوز (${client.fin_exec_count})` : `سليم (${client.fin_exec_count})`}
                         </span>
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.simah < 550 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.simah < 550 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
                         <span>7. درجة سمة الائتمانية (≥ 550)</span>
                         <span style="font-weight: bold; color: ${client.simah < 550 ? '#EF4444' : '#10B981'};">
-                            ${client.simah < 550 ? `⚠️ منخفضة (${client.simah})` : `✓ سليم (${client.simah})`}
+                            ${client.simah < 550 ? `منخفضة (${client.simah})` : `سليم (${client.simah})`}
                         </span>
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${client.dti_pct > 70 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.05)'}; border: 1px solid ${client.dti_pct > 70 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.1)'}; border-radius: 6px;">
                         <span>8. نسبة الاستقطاع المسموحة (≤ 70%)</span>
                         <span style="font-weight: bold; color: ${client.dti_pct > 70 ? '#EF4444' : '#10B981'};">
-                            ${client.dti_pct > 70 ? `⚠️ متجاوز (${client.dti_pct}%)` : `✓ سليم (${client.dti_pct}%)`}
+                            ${client.dti_pct > 70 ? `متجاوز (${client.dti_pct}%)` : `سليم (${client.dti_pct}%)`}
                         </span>
                     </div>
                 </div>
@@ -713,10 +737,62 @@ function selectClient(client) {
                     })()}
                 </div>
             </div>
+
+            <div class="inspector-section" style="border-top: 1px dashed var(--border-color); padding-top: 16px;">
+                <h4><i class="fa-solid fa-file-signature" style="color: #10B981;"></i> ثامناً: الاعتمادات</h4>
+                
+                <!-- Analyst approval card -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 11px;">
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; color: var(--primary); margin-bottom: 4px;">
+                        <span>اعتماد محلل الائتمان</span>
+                        <span style="font-family: 'Outfit'; font-weight: normal; color: var(--text-secondary);">${client.analyst_date || 'غير موقع'}</span>
+                    </div>
+                    <div><strong>الاسم:</strong> ${client.analyst_name || '---'}</div>
+                    <div style="margin-top: 4px; padding: 4px 6px; background: rgba(99,102,241,0.05); border-radius: 4px; color: var(--text-secondary);">
+                        <strong>التوصية:</strong> ${client.analyst_recommendation || 'في انتظار كتابة التوصية الائتمانية'}
+                    </div>
+                </div>
+
+                <!-- Operations approval card -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 11px;">
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; color: #F59E0B; margin-bottom: 4px;">
+                        <span>اعتماد مدير العمليات</span>
+                        <span style="font-family: 'Outfit'; font-weight: normal; color: var(--text-secondary);">${client.ops_date || 'غير موقع'}</span>
+                    </div>
+                    <div><strong>الاسم:</strong> ${client.ops_name || '---'}</div>
+                    <div style="margin-top: 4px; padding: 4px 6px; background: rgba(245,158,11,0.05); border-radius: 4px; color: var(--text-secondary);">
+                        <strong>القرار:</strong> ${client.ops_decision || 'في انتظار قرار مدير العمليات'}
+                    </div>
+                </div>
+
+                <!-- Finance approval card -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; font-size: 11px;">
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; color: #10B981; margin-bottom: 4px;">
+                        <span>اعتماد الإدارة المالية</span>
+                        <span style="font-family: 'Outfit'; font-weight: normal; color: var(--text-secondary);">${client.finance_date || 'غير موقع'}</span>
+                    </div>
+                    <div><strong>الاسم:</strong> ${client.finance_name || '---'}</div>
+                    <div style="margin-top: 4px; padding: 4px 6px; background: rgba(16,185,129,0.05); border-radius: 4px; color: var(--text-secondary);">
+                        <strong>القرار:</strong> ${client.finance_decision || 'في انتظار قرار الإدارة المالية'}
+                    </div>
+                </div>
+
+                <!-- General notes & completion date -->
+                ${client.general_notes || client.completion_date ? `
+                    <div style="margin-top: 12px; padding: 10px; background: rgba(0,0,0,0.15); border-radius: 8px; font-size: 11px;">
+                        ${client.general_notes ? `<div style="margin-bottom: 4px;"><strong>ملاحظات عامة:</strong> ${client.general_notes}</div>` : ''}
+                        ${client.completion_date ? `<div><strong>تاريخ الاكتمال النهائي:</strong> <span style="font-family: 'Outfit';">${client.completion_date}</span></div>` : ''}
+                    </div>
+                ` : ''}
+            </div>
         </div>
     `;
     
     switchInspectorTab(currentInspectorTab);
+    
+    if (openModal) {
+        document.getElementById('detail-modal').classList.add('active');
+    }
 }
 
 // Switch between inspector detail tabs
@@ -736,6 +812,29 @@ function switchInspectorTab(tabId) {
     
     const activeContent = document.getElementById(`tab-content-${tabId}`);
     if (activeContent) activeContent.classList.add('active');
+}
+
+// Close Detailed Client Modal
+function closeDetailModal() {
+    const modal = document.getElementById('detail-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// Filter Clients table dynamically (Smart Search)
+function filterClientsTable(query) {
+    if (!query) {
+        renderClientsTable(clientsData);
+        return;
+    }
+    const filtered = clientsData.filter(c => {
+        return (c.name && c.name.toLowerCase().includes(query)) ||
+               (c.mobile && c.mobile.includes(query)) ||
+               (c.file_id && c.file_id.toLowerCase().includes(query)) ||
+               (c.id_num && c.id_num.includes(query));
+    });
+    renderClientsTable(filtered);
 }
 
 // Render empty inspector placeholder
@@ -931,7 +1030,18 @@ async function migrateViolationsToClient() {
         bank_exec_count: client.bank_exec_count,
         bank_exec_total: client.bank_exec_total,
         fees_percent: client.fees_percent,
-        workflow_stage: client.workflow_stage || "جديد"
+        workflow_stage: client.workflow_stage || "جديد",
+        analyst_name: client.analyst_name || "",
+        analyst_date: client.analyst_date || "",
+        analyst_recommendation: client.analyst_recommendation || "",
+        ops_name: client.ops_name || "",
+        ops_date: client.ops_date || "",
+        ops_decision: client.ops_decision || "",
+        finance_name: client.finance_name || "",
+        finance_date: client.finance_date || "",
+        finance_decision: client.finance_decision || "",
+        general_notes: client.general_notes || "",
+        completion_date: client.completion_date || ""
     };
     
     try {
@@ -973,10 +1083,10 @@ function initCharts(clients) {
     let rejectedCount = 0;
     
     clients.forEach(c => {
-        if (c.decision.includes("🟢")) qualifiedCount++;
-        else if (c.decision.includes("🟡")) reservedCount++;
-        else if (c.decision.includes("🟠")) exceptionCount++;
-        else if (c.decision.includes("🔴")) rejectedCount++;
+        if (c.decision.includes("مؤهل") && !c.decision.includes("تحفظ")) qualifiedCount++;
+        else if (c.decision.includes("تحفظ")) reservedCount++;
+        else if (c.decision.includes("استثناء")) exceptionCount++;
+        else if (c.decision.includes("مرفوض")) rejectedCount++;
     });
     
     const pieCtx = document.getElementById('classificationChart').getContext('2d');
@@ -985,7 +1095,7 @@ function initCharts(clients) {
     classificationChart = new Chart(pieCtx, {
         type: 'doughnut',
         data: {
-            labels: ['🟢 مؤهل', '🟡 مؤهل بتحفظ', '🟠 استثناء', '🔴 مرفوض'],
+            labels: ['مؤهل', 'مؤهل بتحفظ', 'يحتاج استثناء', 'مرفوض'],
             datasets: [{
                 data: [qualifiedCount, reservedCount, exceptionCount, rejectedCount],
                 backgroundColor: [
@@ -1121,12 +1231,30 @@ function openNewClientModal() {
     document.getElementById('form-exec-bank-tot').value = 0;
     document.getElementById('form-fees-pct').value = '0.10';
 
+    // Approvals
+    document.getElementById('form-analyst-name').value = '';
+    document.getElementById('form-analyst-date').value = '';
+    document.getElementById('form-analyst-rec').value = '';
+    
+    document.getElementById('form-ops-name').value = '';
+    document.getElementById('form-ops-date').value = '';
+    document.getElementById('form-ops-dec').value = '';
+    
+    document.getElementById('form-fin-name').value = '';
+    document.getElementById('form-fin-date').value = '';
+    document.getElementById('form-fin-dec').value = '';
+    
+    document.getElementById('form-general-notes').value = '';
+    document.getElementById('form-completion-date').value = '';
+
     document.getElementById('client-modal').classList.add('active');
 }
 
 // Open modal for editing selected client
 function openEditClientModal() {
     if (!selectedClient) return;
+    
+    closeDetailModal();
     
     document.getElementById('modal-title').textContent = `تعديل ملف العميل: ${selectedClient.name}`;
     
@@ -1167,6 +1295,21 @@ function openEditClientModal() {
     document.getElementById('form-fees-pct').value = selectedClient.fees_percent.toFixed(2);
     document.getElementById('form-workflow').value = selectedClient.workflow_stage || 'جديد';
 
+    // Approvals
+    document.getElementById('form-analyst-name').value = selectedClient.analyst_name || '';
+    document.getElementById('form-analyst-date').value = selectedClient.analyst_date || '';
+    document.getElementById('form-analyst-rec').value = selectedClient.analyst_recommendation || '';
+    
+    document.getElementById('form-ops-name').value = selectedClient.ops_name || '';
+    document.getElementById('form-ops-date').value = selectedClient.ops_date || '';
+    document.getElementById('form-ops-dec').value = selectedClient.ops_decision || '';
+    
+    document.getElementById('form-fin-name').value = selectedClient.finance_name || '';
+    document.getElementById('form-fin-date').value = selectedClient.finance_date || '';
+    document.getElementById('form-fin-dec').value = selectedClient.finance_decision || '';
+    
+    document.getElementById('form-general-notes').value = selectedClient.general_notes || '';
+    document.getElementById('form-completion-date').value = selectedClient.completion_date || '';
 
     document.getElementById('client-modal').classList.add('active');
 }
@@ -1216,7 +1359,22 @@ async function handleFormSubmit(e) {
         bank_exec_count: parseInt(document.getElementById('form-exec-bank-cnt').value || 0),
         bank_exec_total: parseFloat(document.getElementById('form-exec-bank-tot').value || 0),
         fees_percent: parseFloat(document.getElementById('form-fees-pct').value),
-        workflow_stage: document.getElementById('form-workflow').value
+        workflow_stage: document.getElementById('form-workflow').value,
+        
+        analyst_name: document.getElementById('form-analyst-name').value,
+        analyst_date: document.getElementById('form-analyst-date').value,
+        analyst_recommendation: document.getElementById('form-analyst-rec').value,
+        
+        ops_name: document.getElementById('form-ops-name').value,
+        ops_date: document.getElementById('form-ops-date').value,
+        ops_decision: document.getElementById('form-ops-dec').value,
+        
+        finance_name: document.getElementById('form-fin-name').value,
+        finance_date: document.getElementById('form-fin-date').value,
+        finance_decision: document.getElementById('form-fin-dec').value,
+        
+        general_notes: document.getElementById('form-general-notes').value,
+        completion_date: document.getElementById('form-completion-date').value
     };
     
     try {
@@ -1254,6 +1412,7 @@ async function deleteClientFile(rowIdx) {
         });
         const data = await res.json();
         if (data.success) {
+            closeDetailModal();
             showToast(data.message, "success");
             selectedClient = null;
             await refreshDashboard();
@@ -1264,4 +1423,405 @@ async function deleteClientFile(rowIdx) {
         console.error(err);
         showToast("فشل الاتصال بالخادم لحذف الملف.", "error");
     }
+}
+
+// Print Debt Settlement Execution Order
+function printExecutionOrder() {
+    if (!selectedClient) {
+        showToast("يرجى اختيار ملف عميل أولاً لطباعة تقرير أمر التنفيذ!", "error");
+        return;
+    }
+    
+    const client = selectedClient;
+    
+    // Format currency helper
+    const fmt = (v) => formatCurrency(v);
+    
+    // Classification badge color
+    let badgeClass = '';
+    if (client.classification === 'A') badgeClass = 'badge-green';
+    else if (client.classification === 'B') badgeClass = 'badge-yellow';
+    else if (client.classification === 'C') badgeClass = 'badge-orange';
+    else badgeClass = 'badge-red';
+    
+    const printWindow = window.open('', '_blank', 'width=900,height=900');
+    printWindow.document.write(`
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>أمر تنفيذ عملية سداد - ${client.file_id}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+        }
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #ffffff;
+            color: #111827;
+            margin: 0;
+            padding: 10px 15px;
+            direction: rtl;
+            font-size: 11.5px;
+            line-height: 1.4;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #1e3a8a;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .logo-box {
+            text-align: right;
+        }
+        .logo-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: #1e3a8a;
+            margin: 0;
+        }
+        .logo-sub {
+            font-size: 10px;
+            color: #4b5563;
+            margin: 2px 0 0 0;
+            font-weight: bold;
+        }
+        .report-title-container {
+            text-align: center;
+        }
+        .report-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #ffffff;
+            background: #1e3a8a;
+            padding: 6px 18px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+        .meta-box {
+            text-align: left;
+            font-size: 11px;
+            color: #374151;
+        }
+        .meta-box div {
+            margin-bottom: 2px;
+        }
+        .section-title {
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #1e3a8a;
+            border-bottom: 1.5px solid #1e3a8a;
+            padding-bottom: 4px;
+            margin: 12px 0 6px 0;
+        }
+        .table-data {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        .table-data th, .table-data td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 8px;
+            text-align: right;
+            font-size: 11px;
+        }
+        .table-data th {
+            background-color: #f8fafc;
+            color: #1e293b;
+            font-weight: bold;
+            width: 25%;
+        }
+        .table-data td {
+            width: 25%;
+        }
+        .grid-2col-layout {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        .grid-2col-layout > div {
+            flex: 1;
+        }
+        .grid-3col {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 8px;
+            margin-bottom: 10px;
+        }
+        .approval-card {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 10px;
+            background-color: #f8fafc;
+        }
+        .approval-card-title {
+            font-weight: 800;
+            color: #1e3a8a;
+            border-bottom: 1px dashed #cbd5e1;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+            font-size: 11.5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .approval-body {
+            font-size: 10.5px;
+            color: #374151;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-height: 70px;
+        }
+        .signature-line {
+            margin-top: auto;
+            border-top: 1px dashed #94a3b8;
+            padding-top: 4px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 10px;
+            color: #64748b;
+        }
+        .badge-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 800;
+            font-size: 11px;
+            color: #fff;
+        }
+        .badge-green { background-color: #10b981; }
+        .badge-yellow { background-color: #f59e0b; color: #111827; }
+        .badge-orange { background-color: #f97316; }
+        .badge-red { background-color: #ef4444; }
+        
+        .footer {
+            margin-top: 15px;
+            border-top: 1px solid #cbd5e1;
+            padding-top: 8px;
+            font-size: 10px;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 500;
+        }
+
+        .highlight-red {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        .highlight-green {
+            color: #16a34a;
+            font-weight: bold;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                margin: 0;
+                font-size: 11px;
+            }
+            .no-print {
+                display: none;
+            }
+            .print-btn-container {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-btn-container" style="display: flex; justify-content: center; margin-bottom: 20px; background: #f3f4f6; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; gap: 10px;">
+        <button onclick="window.print()" style="background: #10b981; color: #fff; border: none; padding: 8px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; font-family: inherit;">
+            طباعة التقرير PDF
+        </button>
+        <button onclick="window.close()" style="background: #ef4444; color: #fff; border: none; padding: 8px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; font-family: inherit;">
+            إغلاق النافذة
+        </button>
+    </div>
+
+    <div class="header">
+        <div class="logo-box">
+            <h1 class="logo-title">نظام الجدارة الائتمانية</h1>
+            <p class="logo-sub">وساطة تمويل وسداد مديونيات</p>
+        </div>
+        <div class="report-title-container">
+            <div class="report-title">أمر تنفيذ عملية سداد</div>
+            <div style="font-size: 11px; margin-top: 4px; color: #4b5563; font-weight: bold; font-family: 'Outfit';">Debt Settlement Execution Order</div>
+        </div>
+        <div class="meta-box">
+            <div>رقم الملف: <strong style="font-family: Arial; color: #1e3a8a;">${client.file_id}</strong></div>
+            <div>تاريخ الإدخال: <span style="font-family: Arial;">${client.date}</span></div>
+            <div>تاريخ الطباعة: <span style="font-family: Arial;">${new Date().toISOString().split('T')[0]}</span></div>
+        </div>
+    </div>
+
+    <!-- Section 1: Client profile -->
+    <div class="section-title">أولاً: بيانات العميل الأساسية</div>
+    <table class="table-data">
+        <tr>
+            <th>اسم العميل</th>
+            <td><strong>${client.name}</strong></td>
+            <th>رقم الهوية الوطنية</th>
+            <td style="font-family: Arial;">${client.id_num}</td>
+        </tr>
+        <tr>
+            <th>رقم الجوال</th>
+            <td style="font-family: Arial;">${client.mobile}</td>
+            <th>العمر</th>
+            <td>${client.age} سنة</td>
+        </tr>
+        <tr>
+            <th>جهة العمل</th>
+            <td>${client.employer}</td>
+            <th>نوع جهة العمل</th>
+            <td>${client.emp_type}</td>
+        </tr>
+        <tr>
+            <th>الراتب الأساسي</th>
+            <td>${fmt(client.basic_sal)} ريال</td>
+            <th>صافي الراتب المحول</th>
+            <td class="highlight-green">${fmt(client.net_sal)} ريال</td>
+        </tr>
+    </table>
+
+    <div class="grid-2col-layout">
+        <!-- Section 2: Evaluation Results -->
+        <div>
+            <div class="section-title">ثانياً: نتائج التقييم الائتماني</div>
+            <table class="table-data" style="margin-bottom: 0;">
+                <tr>
+                    <th>درجة سمة</th>
+                    <td style="font-family: Arial; font-weight: bold;">${client.simah}</td>
+                </tr>
+                <tr>
+                    <th>نسبة الاستقطاع (DTI)</th>
+                    <td style="font-family: Arial; font-weight: bold;">${client.dti_pct}%</td>
+                </tr>
+                <tr>
+                    <th>التصنيف الائتماني</th>
+                    <td>
+                        <span class="badge-status ${badgeClass}">${client.classification}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>نتيجة التقييم النهائي</th>
+                    <td style="font-weight: bold;">${client.decision}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Section 3: Executions -->
+        <div>
+            <div class="section-title">ثالثاً: ملف التنفيذات القضائية والنزاعات</div>
+            <table class="table-data" style="margin-bottom: 0;">
+                <tr>
+                    <th>إجمالي عدد التنفيذات</th>
+                    <td style="font-family: Arial;">${client.total_exec_count} طلبات</td>
+                </tr>
+                <tr>
+                    <th>إجمالي مبالغ التنفيذات</th>
+                    <td class="highlight-red">${fmt(client.total_exec_val)} ريال</td>
+                </tr>
+                <tr>
+                    <th>درجة مخاطر التنفيذات</th>
+                    <td>${client.risk_level}</td>
+                </tr>
+                <tr>
+                    <th>درجة المخاطرة العامة</th>
+                    <td>${client.risk_level}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 4: Feasibility Study -->
+    <div class="section-title">رابعاً: دراسة الجدوى التمويلية وعملية السداد</div>
+    <table class="table-data">
+        <tr>
+            <th>مبلغ التمويل المتوقع</th>
+            <td class="highlight-green" style="font-size: 13px;">${fmt(client.expected_funding)} ريال</td>
+            <th>إجمالي المديونيات</th>
+            <td>${fmt(client.total_debts)} ريال</td>
+        </tr>
+        <tr>
+            <th>إجمالي التنفيذات القضائية</th>
+            <td class="highlight-red">${fmt(client.total_exec_val)} ريال</td>
+            <th>مبلغ السداد المطلوب (الكلي)</th>
+            <td class="highlight-red" style="font-size: 13px;">${fmt(client.required_payment)} ريال</td>
+        </tr>
+        <tr>
+            <th>الفائض المتوقع (الإجمالي)</th>
+            <td>${fmt(client.gross_surplus)} ريال</td>
+            <th>نسبة أتعاب الشركة</th>
+            <td style="font-family: Arial; font-weight: bold;">${client.fees_percent * 100}%</td>
+        </tr>
+        <tr>
+            <th>قيمة أتعاب الشركة الفعلية</th>
+            <td>${fmt(client.company_fees)} ريال</td>
+            <th>صافي الفائض للعميل (المتبقي)</th>
+            <td class="highlight-green" style="font-size: 14px; font-weight: 800;">${fmt(client.net_surplus)} ريال</td>
+        </tr>
+        <tr>
+            <th>قرار الجدوى الاقتصادية</th>
+            <td colspan="3" style="font-weight: bold; font-size: 13px;">${client.feasibility_decision}</td>
+        </tr>
+    </table>
+
+    <!-- Section 5: Approvals -->
+    <div class="section-title">خامساً: الاعتمادات وتواقيع دورة العمل</div>
+    <div class="grid-3col">
+        <!-- Analyst -->
+        <div class="approval-card">
+            <div class="approval-card-title">
+                <span>اعتماد محلل الائتمان</span>
+                <span style="font-family: Arial; font-weight: normal; font-size: 10px; color: #4b5563;">${client.analyst_date || 'غير موقع'}</span>
+            </div>
+            <div class="approval-body">
+                <div>الاسم: <strong>${client.analyst_name || '---'}</strong></div>
+                <div style="margin-top: 4px; line-height: 1.4;">التوصية: <br><span style="color: #4b5563; font-style: italic;">${client.analyst_recommendation || 'في انتظار كتابة التوصية الائتمانية'}</span></div>
+                <div class="signature-line">التوقيع / الختم</div>
+            </div>
+        </div>
+        
+        <!-- Operations -->
+        <div class="approval-card">
+            <div class="approval-card-title">
+                <span>اعتماد مدير العمليات</span>
+                <span style="font-family: Arial; font-weight: normal; font-size: 10px; color: #4b5563;">${client.ops_date || 'غير موقع'}</span>
+            </div>
+            <div class="approval-body">
+                <div>الاسم: <strong>${client.ops_name || '---'}</strong></div>
+                <div style="margin-top: 4px; line-height: 1.4;">القرار: <br><span style="color: #4b5563; font-style: italic;">${client.ops_decision || 'في انتظار قرار مدير العمليات'}</span></div>
+                <div class="signature-line">التوقيع / الختم</div>
+            </div>
+        </div>
+        
+        <!-- Finance -->
+        <div class="approval-card">
+            <div class="approval-card-title">
+                <span>اعتماد الإدارة المالية</span>
+                <span style="font-family: Arial; font-weight: normal; font-size: 10px; color: #4b5563;">${client.finance_date || 'غير موقع'}</span>
+            </div>
+            <div class="approval-body">
+                <div>الاسم: <strong>${client.finance_name || '---'}</strong></div>
+                <div style="margin-top: 4px; line-height: 1.4;">القرار: <br><span style="color: #4b5563; font-style: italic;">${client.finance_decision || 'في انتظار قرار الإدارة المالية'}</span></div>
+                <div class="signature-line">التوقيع / الختم</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div>نظام تحليل العملاء والجدارة الائتمانية وسداد المديونيات (Excel Professional Workflow System)</div>
+        <div>صفحة 1 من 1</div>
+    </div>
+</body>
+</html>
+    `);
+    printWindow.document.close();
 }

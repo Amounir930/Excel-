@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نظام تحليل العملاء والجدارة الائتمانية وسداد المديونيات</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260530">
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js CDN for premium charts -->
@@ -120,20 +120,20 @@
 
             <div class="kpi-card qualified">
                 <div class="kpi-header">
-                    <span class="kpi-title">الفوائض المتوقعة للعملاء</span>
+                    <span class="kpi-title">إجمالي الفرص التمويلية</span>
                     <span class="kpi-icon"><i class="fa-solid fa-chart-line" style="color: #10B981;"></i></span>
                 </div>
-                <div class="kpi-value currency" id="stat-surpluses" style="color: #10B981;">0</div>
-                <div class="kpi-sub">صافي الفوائض المتبقية للعملاء</div>
+                <div class="kpi-value currency" id="stat-funding" style="color: #10B981;">0</div>
+                <div class="kpi-sub">إجمالي مبالغ التمويل المقدرة للعملاء</div>
             </div>
 
             <div class="kpi-card">
                 <div class="kpi-header">
-                    <span class="kpi-title">أتعاب الشركة المتوقعة</span>
-                    <span class="kpi-icon"><i class="fa-solid fa-percent" style="color: #F59E0B;"></i></span>
+                    <span class="kpi-title">متوسط درجة المخاطرة</span>
+                    <span class="kpi-icon"><i class="fa-solid fa-shield-halved" style="color: #F59E0B;"></i></span>
                 </div>
-                <div class="kpi-value currency" id="stat-fees" style="color: #F59E0B;">0</div>
-                <div class="kpi-sub">العوائد المحتسبة بالنظام</div>
+                <div class="kpi-value" id="stat-avg-risk" style="color: #F59E0B; font-family: 'Outfit';">0</div>
+                <div class="kpi-sub">متوسط النقاط الائتمانية للعملاء (من 105)</div>
             </div>
         </section>
 
@@ -147,7 +147,7 @@
             </div>
             
             <div class="panel-card chart-card">
-                <div class="panel-title">💰 مقارنة الأرقام التمويلية الإجمالية (ريال سعودي)</div>
+                <div class="panel-title">مقارنة الأرقام التمويلية الإجمالية (ريال سعودي)</div>
                 <div class="chart-container">
                     <canvas id="financialChart"></canvas>
                 </div>
@@ -164,6 +164,14 @@
                     <span class="badge" style="background: rgba(99, 102, 241, 0.1); border: 1px solid var(--border-color); font-weight: 600; color: var(--primary);">
                         مزامنة مباشرة مع Excel
                     </span>
+                </div>
+                
+                <!-- Smart Search Bar -->
+                <div class="search-bar-container" style="padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 12px; align-items: center;">
+                    <div style="position: relative; flex: 1;">
+                        <i class="fa-solid fa-magnifying-glass" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                        <input type="text" id="client-search-input" placeholder="البحث الذكي عن عميل (الاسم، الجوال، رقم الملف أو الهوية)..." style="width: 100%; padding: 10px 42px 10px 16px; background: rgba(5,7,15,0.4); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-family: inherit; font-size: 13px; outline: none; transition: all 0.3s ease;">
+                    </div>
                 </div>
                 
                 <div class="table-container">
@@ -191,30 +199,6 @@
                     </table>
                 </div>
             </section>
-
-            <!-- Detailed Client Inspector with Elegant Tabbed Interface -->
-            <section class="panel-card" id="inspector-card">
-                <div class="panel-title">
-                    <span><i class="fa-solid fa-magnifying-glass-chart"></i> لوحة الفحص الائتماني والقرار</span>
-                </div>
-                
-                <!-- Immersive Navigation Tabs -->
-                <div class="inspector-tabs" id="inspector-tab-headers" style="display: none;">
-                    <button class="tab-btn active" id="tab-btn-personal" onclick="switchInspectorTab('personal')">العميل والمديونيات</button>
-                    <button class="tab-btn" id="tab-btn-risk" onclick="switchInspectorTab('risk')">محرك المخاطر</button>
-                    <button class="tab-btn" id="tab-btn-feasibility" onclick="switchInspectorTab('feasibility')">الجدوى والفوائض</button>
-                    <button class="tab-btn" id="tab-btn-workflow" onclick="switchInspectorTab('workflow')">الاعتمادات</button>
-                </div>
-                
-                <div class="inspector-detail" id="inspector-content">
-                    <div class="empty-placeholder">
-                        <div class="empty-icon"><i class="fa-solid fa-user-check"></i></div>
-                        <div class="empty-title">لم يتم اختيار أي ملف عميل</div>
-                        <p style="font-size: 11px; color: var(--text-secondary);">اختر ملفاً من الجدول لعرض تفاصيله، محرك المخاطر، الجدوى المالية وقرار الأهلية التفاعلي.</p>
-                    </div>
-                </div>
-            </section>
-
         </main>
         
         <!-- Interactive Violations Calculator Section -->
@@ -326,7 +310,7 @@
                     <div class="form-grid">
                         
                         <!-- Section A: Client Profile -->
-                        <div class="form-divider">👤 أولاً: البيانات الأساسية للعميل</div>
+                        <div class="form-divider">أولاً: البيانات الأساسية للعميل</div>
                         
                         <div class="form-group">
                             <label class="form-label">اسم العميل بالكامل *</label>
@@ -419,7 +403,7 @@
                         </div>
 
                         <!-- Section B: Obligations / Debts -->
-                        <div class="form-divider">💳 ثانياً: شاشة الالتزامات والمديونيات</div>
+                        <div class="form-divider">ثانياً: شاشة الالتزامات والمديونيات</div>
                         
                         <div class="form-group">
                             <label class="form-label">عدد القروض الشخصية</label>
@@ -459,7 +443,7 @@
                         </div>
 
                         <!-- Section C: Execution Orders -->
-                        <div class="form-divider">⚖️ ثالثاً: شاشة التنفيذات القضائية والنزاعات</div>
+                        <div class="form-divider">ثالثاً: شاشة التنفيذات القضائية والنزاعات</div>
                         
                         <div class="form-group">
                             <label class="form-label">عدد طلبات التنفيذ (أمر 46)</label>
@@ -495,7 +479,7 @@
                         </div>
 
                         <!-- Section D: Company Fees -->
-                        <div class="form-divider">💰 رابعاً: دراسة الجدوى وعمولة الخدمة</div>
+                        <div class="form-divider">سادساً: دراسة الجدوى التمويلية</div>
                         
                         <div class="form-group">
                             <label class="form-label">نسبة أتعاب الشركة *</label>
@@ -506,6 +490,61 @@
                                 <option value="0.08">8% (عميل مميز)</option>
                                 <option value="0.05">5% (اتفاق خاص)</option>
                             </select>
+                        </div>
+
+                        <!-- Section E: Approvals & Workflow Workflow -->
+                        <div class="form-divider">ثامناً: الاعتمادات</div>
+                        
+                        <!-- Analyst -->
+                        <div class="form-group">
+                            <label class="form-label">محلل الائتمان - الاسم</label>
+                            <input type="text" id="form-analyst-name" class="form-input" placeholder="مثال: أحمد عسيري">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">محلل الائتمان - التاريخ</label>
+                            <input type="date" id="form-analyst-date" class="form-input">
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label class="form-label">محلل الائتمان - التوصية</label>
+                            <input type="text" id="form-analyst-rec" class="form-input" placeholder="مثال: موصى به للتمويل وسداد مديونية العميل">
+                        </div>
+
+                        <!-- Operations -->
+                        <div class="form-group">
+                            <label class="form-label">مدير العمليات - الاسم</label>
+                            <input type="text" id="form-ops-name" class="form-input" placeholder="مثال: خالد الحربي">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">مدير العمليات - التاريخ</label>
+                            <input type="date" id="form-ops-date" class="form-input">
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label class="form-label">مدير العمليات - القرار</label>
+                            <input type="text" id="form-ops-dec" class="form-input" placeholder="مثال: معتمد للتنفيذ ومطابقة الجدارة">
+                        </div>
+
+                        <!-- Finance -->
+                        <div class="form-group">
+                            <label class="form-label">الإدارة المالية - الاسم</label>
+                            <input type="text" id="form-fin-name" class="form-input" placeholder="مثال: فهد العتيبي">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">الإدارة المالية - التاريخ</label>
+                            <input type="date" id="form-fin-date" class="form-input">
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label class="form-label">الإدارة المالية - القرار</label>
+                            <input type="text" id="form-fin-dec" class="form-input" placeholder="مثال: مقبول ومعتمد لصرف مبالغ السداد والمديونيات">
+                        </div>
+
+                        <!-- Notes & Completion Date -->
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label class="form-label">ملاحظات عامة حول الملف</label>
+                            <textarea id="form-general-notes" class="form-input" rows="2" placeholder="أية ملاحظات إضافية حول التمويل أو الجدوى..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">تاريخ الاكتمال النهائي</label>
+                            <input type="date" id="form-completion-date" class="form-input">
                         </div>
 
                     </div>
@@ -520,10 +559,39 @@
             </div>
         </div>
     </div>
+    
+    <!-- Detailed Client Inspector Modal -->
+    <div class="modal" id="detail-modal">
+        <div class="modal-content" style="max-width: 950px; background: #0D1326; border-radius: 16px;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
+                <h3 class="modal-title" style="margin: 0; font-size: 16px; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-magnifying-glass-chart" style="color: var(--primary);"></i>
+                    لوحة الفحص الائتماني والقرار للعميل
+                </h3>
+                <span class="modal-close" onclick="closeDetailModal()" style="font-size: 24px; cursor: pointer; color: var(--text-secondary); transition: color 0.2s ease;">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 24px; overflow-y: auto; max-height: calc(85vh - 70px);">
+                <!-- Immersive Navigation Tabs -->
+                <div class="inspector-tabs" id="inspector-tab-headers" style="display: none; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; display: flex; gap: 8px;">
+                    <button class="tab-btn active" id="tab-btn-personal" onclick="switchInspectorTab('personal')">العميل والمديونيات</button>
+                    <button class="tab-btn" id="tab-btn-risk" onclick="switchInspectorTab('risk')">محرك المخاطر</button>
+                    <button class="tab-btn" id="tab-btn-feasibility" onclick="switchInspectorTab('feasibility')">الجدوى والفوائض</button>
+                    <button class="tab-btn" id="tab-btn-workflow" onclick="switchInspectorTab('workflow')">الاعتمادات</button>
+                </div>
+                
+                <div class="inspector-detail" id="inspector-content">
+                    <div class="empty-placeholder">
+                        <div class="empty-icon"><i class="fa-solid fa-user-check"></i></div>
+                        <div class="empty-title">لم يتم اختيار أي ملف عميل</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Notification Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260530"></script>
 </body>
 </html>

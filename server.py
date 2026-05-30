@@ -71,6 +71,22 @@ class ClientData(BaseModel):
     # Workflow Stage
     workflow_stage: str = Field("جديد", description="Workflow Stage")
 
+    # Workflow Approvals
+    analyst_name: str = Field("", description="Analyst Name")
+    analyst_date: str = Field("", description="Analyst Date")
+    analyst_recommendation: str = Field("", description="Analyst Recommendation")
+    
+    ops_name: str = Field("", description="Operations Name")
+    ops_date: str = Field("", description="Operations Date")
+    ops_decision: str = Field("", description="Operations Decision")
+    
+    finance_name: str = Field("", description="Finance Name")
+    finance_date: str = Field("", description="Finance Date")
+    finance_decision: str = Field("", description="Finance Decision")
+    
+    general_notes: str = Field("", description="General Notes")
+    completion_date: str = Field("", description="Completion Date")
+
 
 def calculate_client_metrics(c: dict) -> dict:
     """Calculates all credit risk and feasibility metrics matching Excel sheet formulas"""
@@ -141,33 +157,33 @@ def calculate_client_metrics(c: dict) -> dict:
     
     # Final Decision
     if reasons:
-        decision = "🔴 مرفوض"
+        decision = "مرفوض"
         brief_reasons = "سياسة الرفض المباشر: " + "، ".join(reasons)
     else:
         if classification == "A":
-            decision = "🟢 مؤهل"
+            decision = "مؤهل"
             brief_reasons = "استيفاء شروط الجدارة الائتمانية الممتازة (A)"
         elif classification == "B":
-            decision = "🟡 مؤهل بتحفظ"
+            decision = "مؤهل بتحفظ"
             brief_reasons = "استيفاء الشروط مع درجة مخاطر متوسطة (B)"
         elif classification == "C":
-            decision = "🟠 استثناء"
+            decision = "يحتاج استثناء"
             brief_reasons = "مخاطر عالية تحتاج استثناء إداري خاص (C)"
         else:
-            decision = "🔴 مرفوض"
+            decision = "مرفوض"
             brief_reasons = "النقاط الائتمانية الكلية منخفضة جداً (D)"
             
     # Risk Level (based on Executions)
     if tot_exec_count == 0:
-        risk_level = "لا توجد تنفيذات 🟢"
+        risk_level = "لا توجد تنفيذات"
     elif tot_exec_count > 8 or tot_exec_val > 100000 or c["fin_exec_count"] > 3:
-        risk_level = "مرفوض مباشر 🔴"
+        risk_level = "مرفوض مباشر"
     elif tot_exec_count > 5 or tot_exec_val > 50000:
-        risk_level = "مخاطر عالية 🟠"
+        risk_level = "مخاطر عالية"
     elif tot_exec_count > 3 or tot_exec_val > 25000:
-        risk_level = "مخاطر متوسطة 🟡"
+        risk_level = "مخاطر متوسطة"
     else:
-        risk_level = "مخاطر منخفضة 🟢"
+        risk_level = "مخاطر منخفضة"
         
     # Feasibility
     if classification == "A": funding_factor = 20
@@ -185,13 +201,13 @@ def calculate_client_metrics(c: dict) -> dict:
     net_surplus = gross_surplus - company_fees
     
     if net_surplus > 50000:
-        feasibility_decision = "🟢 فرصة ممتازة"
+        feasibility_decision = "فرصة ممتازة"
     elif net_surplus > 20000:
-        feasibility_decision = "🟡 فرصة جيدة"
+        feasibility_decision = "فرصة جيدة"
     elif net_surplus > 0:
-        feasibility_decision = "🟠 فرصة ضعيفة"
+        feasibility_decision = "فرصة ضعيفة"
     else:
-        feasibility_decision = "🔴 غير مجدي اقتصادياً"
+        feasibility_decision = "غير مجدي اقتصادياً"
         
     return {
         "file_id": c.get("file_id", "ملف-جديد"),
@@ -256,6 +272,17 @@ def calculate_client_metrics(c: dict) -> dict:
         "feasibility_decision": feasibility_decision,
         
         "workflow_stage": c.get("workflow_stage", "جديد"),
+        "analyst_name": c.get("analyst_name", ""),
+        "analyst_date": c.get("analyst_date", ""),
+        "analyst_recommendation": c.get("analyst_recommendation", ""),
+        "ops_name": c.get("ops_name", ""),
+        "ops_date": c.get("ops_date", ""),
+        "ops_decision": c.get("ops_decision", ""),
+        "finance_name": c.get("finance_name", ""),
+        "finance_date": c.get("finance_date", ""),
+        "finance_decision": c.get("finance_decision", ""),
+        "general_notes": c.get("general_notes", ""),
+        "completion_date": c.get("completion_date", ""),
         "row_idx": c.get("row_idx", -1)
     }
 
@@ -267,6 +294,7 @@ def read_clients_from_excel() -> list:
     sh2 = wb['2. الالتزامات']
     sh3 = wb['3. التنفيذات']
     sh5 = wb['5. الجدوى التمويلية']
+    sh6 = wb['6. الاعتمادات']
     
     clients_list = []
     
@@ -327,7 +355,20 @@ def read_clients_from_excel() -> list:
             
             # Feasibility %
             "fees_percent": float(sh5[f"J{r}"].value or 0.10),
-            "workflow_stage": str(sh1[f"R{r}"].value or "جديد")
+            "workflow_stage": str(sh1[f"R{r}"].value or "جديد"),
+            
+            # Workflow Approvals
+            "analyst_name": str(sh6[f"F{r}"].value or ""),
+            "analyst_date": str(sh6[f"G{r}"].value or ""),
+            "analyst_recommendation": str(sh6[f"H{r}"].value or ""),
+            "ops_name": str(sh6[f"I{r}"].value or ""),
+            "ops_date": str(sh6[f"J{r}"].value or ""),
+            "ops_decision": str(sh6[f"K{r}"].value or ""),
+            "finance_name": str(sh6[f"L{r}"].value or ""),
+            "finance_date": str(sh6[f"M{r}"].value or ""),
+            "finance_decision": str(sh6[f"N{r}"].value or ""),
+            "general_notes": str(sh6[f"O{r}"].value or ""),
+            "completion_date": str(sh6[f"P{r}"].value or "")
         }
         
         # Calculate full metrics
@@ -411,7 +452,7 @@ def write_client_to_excel(c: dict, target_row: int = -1) -> int:
     sh3[f"B{r}"] = f"='1. بيانات العميل'!C{r}"
     sh3[f"K{r}"] = f"=IFERROR(C{r}+E{r}+G{r}+I{r},0)"
     sh3[f"L{r}"] = f"=IFERROR(D{r}+F{r}+H{r}+J{r},0)"
-    sh3[f"M{r}"] = f'=IF(K{r}=0,"لا توجد تنفيذات 🟢",IF(OR(K{r}>8,L{r}>100000,G{r}>3),"مرفوض مباشر 🔴",IF(OR(K{r}>5,L{r}>50000),"مخاطر عالية 🟠",IF(OR(K{r}>3,L{r}>25000),"مخاطر متوسطة 🟡","مخاطر منخفضة 🟢"))))'
+    sh3[f"M{r}"] = f'=IF(K{r}=0,"لا توجد تنفيذات",IF(OR(K{r}>8,L{r}>100000,G{r}>3),"مرفوض مباشر",IF(OR(K{r}>5,L{r}>50000),"مخاطر عالية",IF(OR(K{r}>3,L{r}>25000),"مخاطر متوسطة","مخاطر منخفضة"))))'
 
     # Write sheet 5 fields
     sh5[f"J{r}"] = c["fees_percent"]
@@ -427,26 +468,29 @@ def write_client_to_excel(c: dict, target_row: int = -1) -> int:
     sh5[f"K{r}"] = f"=IFERROR(F{r}*J{r},0)"
     sh5[f"L{r}"] = f"=IFERROR(F{r}-I{r},0)"
     sh5[f"M{r}"] = f"=IFERROR(L{r}-K{r},0)"
-    sh5[f"N{r}"] = f'=IF(B{r}="","",IF(M{r}>50000,"🟢 فرصة ممتازة",IF(M{r}>20000,"🟡 فرصة جيدة",IF(M{r}>0,"🟠 فرصة ضعيفة","🔴 غير مجدي اقتصادياً"))))'
+    sh5[f"N{r}"] = f'=IF(B{r}="","",IF(M{r}>50000,"فرصة ممتازة",IF(M{r}>20000,"فرصة جيدة",IF(M{r}>0,"فرصة ضعيفة","غير مجدي اقتصادياً"))))'
 
-    # Write sheet 6 workflow fields if new
-    if target_row == -1:
-        sh6[f"A{r}"] = f"='1. بيانات العميل'!A{r}"
-        sh6[f"B{r}"] = f"='1. بيانات العميل'!C{r}"
-        sh6[f"C{r}"] = f"='4. محرك المخاطر'!R{r}"
-        sh6[f"D{r}"] = f"='4. محرك المخاطر'!S{r}"
-        sh6[f"E{r}"] = f"='1. بيانات العميل'!R{r}"
-        sh6[f"F{r}"] = "محلل النظام"
-        sh6[f"G{r}"] = datetime.date.today().strftime("%Y-%m-%d")
-        sh6[f"H{r}"] = "معتمد من النظام الائتماني"
-        sh6[f"I{r}"] = "مدير الائتمان"
-        sh6[f"J{r}"] = datetime.date.today().strftime("%Y-%m-%d")
-        sh6[f"K{r}"] = "معتمد للتمويل"
-        sh6[f"L{r}"] = "المدير المالي"
-        sh6[f"M{r}"] = datetime.date.today().strftime("%Y-%m-%d")
-        sh6[f"N{r}"] = "موافقة وصرف"
-        sh6[f"O{r}"] = "تم الفحص والاعتماد والمطابقة الائتمانية بنجاح"
-        sh6[f"P{r}"] = datetime.date.today().strftime("%Y-%m-%d")
+    # Write sheet 6 workflow fields (always write/update)
+    sh6[f"A{r}"] = f"='1. بيانات العميل'!A{r}"
+    sh6[f"B{r}"] = f"='1. بيانات العميل'!C{r}"
+    sh6[f"C{r}"] = f"='4. محرك المخاطر'!R{r}"
+    sh6[f"D{r}"] = f"='4. محرك المخاطر'!S{r}"
+    sh6[f"E{r}"] = f"='1. بيانات العميل'!R{r}"
+    
+    sh6[f"F{r}"] = c.get("analyst_name", "")
+    sh6[f"G{r}"] = c.get("analyst_date", "")
+    sh6[f"H{r}"] = c.get("analyst_recommendation", "")
+    
+    sh6[f"I{r}"] = c.get("ops_name", "")
+    sh6[f"J{r}"] = c.get("ops_date", "")
+    sh6[f"K{r}"] = c.get("ops_decision", "")
+    
+    sh6[f"L{r}"] = c.get("finance_name", "")
+    sh6[f"M{r}"] = c.get("finance_date", "")
+    sh6[f"N{r}"] = c.get("finance_decision", "")
+    
+    sh6[f"O{r}"] = c.get("general_notes", "")
+    sh6[f"P{r}"] = c.get("completion_date", "")
 
     wb.save(EXCEL_PATH)
     return r
@@ -469,15 +513,17 @@ def get_stats():
         clients = read_clients_from_excel()
         
         num_files = len(clients)
-        num_qualified = sum(1 for c in clients if "🟢 مؤهل" in c["decision"])
-        num_reserved = sum(1 for c in clients if "🟡 مؤهل بتحفظ" in c["decision"])
-        num_exceptions = sum(1 for c in clients if "🟠 استثناء" in c["decision"])
-        num_rejected = sum(1 for c in clients if "🔴 مرفوض" in c["decision"])
+        num_qualified = sum(1 for c in clients if "مؤهل" in c["decision"] and "تحفظ" not in c["decision"])
+        num_reserved = sum(1 for c in clients if "مؤهل بتحفظ" in c["decision"])
+        num_exceptions = sum(1 for c in clients if "يحتاج استثناء" in c["decision"])
+        num_rejected = sum(1 for c in clients if "مرفوض" in c["decision"])
         
         total_debts = sum(c["total_debts"] for c in clients)
         total_executions = sum(c["total_exec_val"] for c in clients)
         total_surpluses = sum(max(0.0, c["net_surplus"]) for c in clients)
         total_fees = sum(c["company_fees"] for c in clients)
+        total_funding = sum(c["expected_funding"] for c in clients)
+        avg_risk_score = sum(c["total_pts"] for c in clients) / num_files if num_files > 0 else 0.0
         
         return {
             "num_files": num_files,
@@ -490,7 +536,9 @@ def get_stats():
             "total_debts": total_debts,
             "total_executions": total_executions,
             "total_surpluses": total_surpluses,
-            "total_fees": total_fees
+            "total_fees": total_fees,
+            "total_funding": total_funding,
+            "avg_risk_score": round(avg_risk_score, 1)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء احتساب المؤشرات: {e}")
@@ -574,5 +622,5 @@ def serve_home():
 app.mount("/", StaticFiles(directory="."), name="static")
 
 if __name__ == "__main__":
-    print("🚀 خادم الائتمان المالي يعمل الآن على الرابط: http://127.0.0.1:8000")
+    print("خادم الائتمان المالي يعمل الآن على الرابط: http://127.0.0.1:8000")
     uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
