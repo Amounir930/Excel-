@@ -286,8 +286,16 @@ function selectClient(client) {
                 <h4><i class="fa-solid fa-user" style="color: #6366F1;"></i> بيانات العميل الأساسية</h4>
                 <div class="grid-2col">
                     <div class="info-item">
+                        <span class="info-label">رقم الملف (تلقائي)</span>
+                        <span class="info-value" style="font-family: 'Outfit'; font-weight: 700; color: #818CF8;">${client.file_id}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">تاريخ الإدخال</span>
+                        <span class="info-value" style="font-family: 'Outfit';">${client.date}</span>
+                    </div>
+                    <div class="info-item" style="grid-column: span 2;">
                         <span class="info-label">اسم العميل</span>
-                        <span class="info-value" style="color: #818CF8;">${client.name}</span>
+                        <span class="info-value" style="color: var(--text-primary); font-weight: bold; font-size: 15px;">${client.name}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">رقم الهوية</span>
@@ -305,7 +313,7 @@ function selectClient(client) {
                         <span class="info-label">جهة العمل</span>
                         <span class="info-value">${client.employer}</span>
                     </div>
-                    <div class="info-item">
+                    <div class="info-item" style="grid-column: span 2;">
                         <span class="info-label">نوع جهة العمل</span>
                         <span class="info-value">${client.emp_type}</span>
                     </div>
@@ -317,19 +325,45 @@ function selectClient(client) {
                 <div class="grid-2col">
                     <div class="info-item">
                         <span class="info-label">الراتب الأساسي</span>
-                        <span class="info-value currency">${formatCurrency(client.basic_sal)}</span>
+                        <span class="info-value currency">${formatCurrency(client.basic_sal)} ريال</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">إجمالي الراتب</span>
-                        <span class="info-value currency">${formatCurrency(client.gross_sal)}</span>
+                        <span class="info-value currency">${formatCurrency(client.gross_sal)} ريال</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">صافي الراتب المحول</span>
-                        <span class="info-value currency" style="color: #10B981;">${formatCurrency(client.net_sal)}</span>
+                        <span class="info-value currency" style="color: #10B981;">${formatCurrency(client.net_sal)} ريال</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">مدة الخدمة</span>
                         <span class="info-value">${client.svc_months} شهر</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="inspector-section">
+                <h4><i class="fa-solid fa-shield-halved" style="color: #F59E0B;"></i> الوضع الائتماني وسمة (SIMAH)</h4>
+                <div class="grid-2col">
+                    <div class="info-item">
+                        <span class="info-label">درجة سمة</span>
+                        <span class="info-value" style="font-family: 'Outfit'; font-weight: 700; color: ${client.simah >= 650 ? '#10B981' : client.simah >= 550 ? '#F59E0B' : '#EF4444'};">${client.simah}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">عدد الاستعلامات</span>
+                        <span class="info-value" style="font-family: 'Outfit';">${client.inquiries} استعلامات</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">تعثر قائم؟</span>
+                        <span class="info-value" style="color: ${client.default_status === 'نعم' ? '#EF4444' : '#10B981'}; font-weight: bold;">${client.default_status}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">إيقاف خدمات؟</span>
+                        <span class="info-value" style="color: ${client.blacklist === 'نعم' ? '#EF4444' : '#10B981'}; font-weight: bold;">${client.blacklist}</span>
+                    </div>
+                    <div class="info-item" style="grid-column: span 2;">
+                        <span class="info-label">حجز على الراتب؟</span>
+                        <span class="info-value" style="color: ${client.sal_attach === 'نعم' ? '#EF4444' : '#10B981'}; font-weight: bold;">${client.sal_attach}</span>
                     </div>
                 </div>
             </div>
