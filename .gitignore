@@ -16,3 +16,6 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Environment variables containing secret keys
+.env

@@ -4,12 +4,35 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import openpyxl
+from pymongo import MongoClient
 import os
+import io
 import uvicorn
 import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
+
+# MongoDB Configuration
+MONGODB_URI = os.getenv("MONGODB_URI")
+if not MONGODB_URI:
+    raise ValueError("MONGODB_URI environment variable is missing in .env file!")
+
+# Initialize MongoDB Connection
+try:
+    mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+    # Trigger connection check
+    mongo_client.server_info()
+    db = mongo_client["credit_db"]
+    clients_col = db["clients"]
+    print("✅ تم الاتصال بنجاح بقاعدة بيانات MongoDB Atlas!")
+except Exception as e:
+    print(f"❌ خطأ أثناء الاتصال بقاعدة بيانات MongoDB Atlas: {e}")
+    raise SystemExit("فشل الاتصال بقاعدة بيانات MongoDB! يرجى التحقق من اتصال الإنترنت والإعدادات.")
 
 # Create FastAPI app
-app = FastAPI(title="Credit Risk Analyzer API", version="1.0.0")
+app = FastAPI(title="Credit Risk Analyzer API", version="2.0.0")
 
 # Allow CORS
 app.add_middleware(
@@ -20,11 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-EXCEL_PATH = r"c:\Users\Dell\Desktop\النظام-المالي\نظام_تحليل_العملاء_الائتماني.xlsx"
-
-# Ensure the excel file exists
-if not os.path.exists(EXCEL_PATH):
-    raise FileNotFoundError(f"Excel file not found at: {EXCEL_PATH}")
+EXCEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "نظام_تحليل_العملاء_الائتماني.xlsx")
 
 # Pydantic Client model for request validation
 class ClientData(BaseModel):
@@ -287,9 +306,67 @@ def calculate_client_metrics(c: dict) -> dict:
     }
 
 
-def read_clients_from_excel() -> list:
-    """Reads all clients from Excel file using openpyxl"""
-    wb = openpyxl.load_workbook(EXCEL_PATH, data_only=True)
+# ─────────────────────────────────────────────
+# MongoDB CRUD Helper Functions
+# ─────────────────────────────────────────────
+
+def db_get_clients() -> list:
+    """Retrieves all clients from MongoDB, sorted by row_idx"""
+    try:
+        clients = list(clients_col.find({}).sort("row_idx", 1))
+        for c in clients:
+            c.pop("_id", None)
+        return clients
+    except Exception as e:
+        print(f"خطأ أثناء جلب البيانات من MongoDB: {e}")
+        return []
+
+
+def db_save_client(client_data: dict) -> dict:
+    """Saves a new client or updates an existing one in MongoDB"""
+    existing = clients_col.find_one({"id_num": client_data["id_num"]})
+    
+    if existing:
+        row_idx = existing["row_idx"]
+        file_id = existing.get("file_id") or f"ملف-{row_idx - 3:03d}"
+        client_data["row_idx"] = row_idx
+        client_data["file_id"] = file_id
+        client_data["date"] = existing.get("date", datetime.date.today().strftime("%Y-%m-%d"))
+        calculated = calculate_client_metrics(client_data)
+        clients_col.replace_one({"_id": existing["_id"]}, calculated)
+        return calculated
+    else:
+        all_clients = list(clients_col.find({}, {"row_idx": 1}))
+        if all_clients:
+            max_idx = max(c["row_idx"] for c in all_clients)
+            row_idx = max(max_idx + 1, 4)
+        else:
+            row_idx = 4
+            
+        file_id = f"ملف-{row_idx - 3:03d}"
+        client_data["row_idx"] = row_idx
+        client_data["file_id"] = file_id
+        client_data["date"] = datetime.date.today().strftime("%Y-%m-%d")
+        
+        calculated = calculate_client_metrics(client_data)
+        clients_col.insert_one(calculated)
+        calculated.pop("_id", None)
+        return calculated
+
+
+def db_delete_client(row_idx: int) -> bool:
+    """Deletes a client document from MongoDB by row_idx"""
+    res = clients_col.delete_one({"row_idx": row_idx})
+    return res.deleted_count > 0
+
+
+# ─────────────────────────────────────────────
+# Excel Import / Export Helpers
+# ─────────────────────────────────────────────
+
+def read_clients_from_excel_bytes(excel_bytes: bytes) -> list:
+    """Reads all clients from an Excel file (given as bytes) using openpyxl"""
+    wb = openpyxl.load_workbook(io.BytesIO(excel_bytes), data_only=True)
     sh1 = wb['1. بيانات العميل']
     sh2 = wb['2. الالتزامات']
     sh3 = wb['3. التنفيذات']
@@ -297,11 +374,8 @@ def read_clients_from_excel() -> list:
     sh6 = wb['6. الاعتمادات']
     
     clients_list = []
-    
-    # Excel template is rows 4 to 53
     for r in range(4, 54):
         name = sh1[f"C{r}"].value
-        # If row is empty or name is 0/None, skip
         if not name or name == 0 or name == "0":
             continue
             
@@ -314,7 +388,7 @@ def read_clients_from_excel() -> list:
             
         c = {
             "row_idx": r,
-            "file_id": file_id,
+            "file_id": str(file_id),
             "date": date_str,
             "name": str(name),
             "id_num": str(sh1[f"D{r}"].value or ""),
@@ -332,7 +406,6 @@ def read_clients_from_excel() -> list:
             "blacklist": str(sh1[f"P{r}"].value or "لا"),
             "sal_attach": str(sh1[f"Q{r}"].value or "لا"),
             
-            # Obligations
             "loans_count": int(sh2[f"C{r}"].value or 0),
             "loans_total": float(sh2[f"D{r}"].value or 0.0),
             "real_estate_count": int(sh2[f"E{r}"].value or 0),
@@ -343,7 +416,6 @@ def read_clients_from_excel() -> list:
             "finance_cos_total": float(sh2[f"J{r}"].value or 0.0),
             "monthly_installment": float(sh2[f"L{r}"].value or 0.0),
             
-            # Executions
             "exec_requests_count": int(sh3[f"C{r}"].value or 0),
             "exec_requests_total": float(sh3[f"D{r}"].value or 0.0),
             "ind_exec_count": int(sh3[f"E{r}"].value or 0),
@@ -353,11 +425,9 @@ def read_clients_from_excel() -> list:
             "bank_exec_count": int(sh3[f"I{r}"].value or 0),
             "bank_exec_total": float(sh3[f"J{r}"].value or 0.0),
             
-            # Feasibility %
             "fees_percent": float(sh5[f"J{r}"].value or 0.10),
             "workflow_stage": str(sh1[f"R{r}"].value or "جديد"),
             
-            # Workflow Approvals
             "analyst_name": str(sh6[f"F{r}"].value or ""),
             "analyst_date": str(sh6[f"G{r}"].value or ""),
             "analyst_recommendation": str(sh6[f"H{r}"].value or ""),
@@ -370,15 +440,24 @@ def read_clients_from_excel() -> list:
             "general_notes": str(sh6[f"O{r}"].value or ""),
             "completion_date": str(sh6[f"P{r}"].value or "")
         }
-        
-        # Calculate full metrics
         clients_list.append(calculate_client_metrics(c))
         
     return clients_list
 
 
-def write_client_to_excel(c: dict, target_row: int = -1) -> int:
-    """Writes client data to Excel file and evaluates formulas"""
+def read_clients_from_excel_legacy() -> list:
+    """Reads all clients from the local Excel file (used for initial migration)"""
+    if not os.path.exists(EXCEL_PATH):
+        return []
+    with open(EXCEL_PATH, "rb") as f:
+        return read_clients_from_excel_bytes(f.read())
+
+
+def generate_excel_from_mongodb() -> bytes:
+    """Generates a fresh Excel file from MongoDB data and returns it as bytes"""
+    if not os.path.exists(EXCEL_PATH):
+        raise FileNotFoundError(f"ملف Excel الأساسي غير موجود: {EXCEL_PATH}")
+    
     wb = openpyxl.load_workbook(EXCEL_PATH, data_only=False)
     sh1 = wb['1. بيانات العميل']
     sh2 = wb['2. الالتزامات']
@@ -386,153 +465,179 @@ def write_client_to_excel(c: dict, target_row: int = -1) -> int:
     sh5 = wb['5. الجدوى التمويلية']
     sh6 = wb['6. الاعتمادات']
     
-    r = target_row
-    if r == -1:
-        # Find next available row in sheet 1 (rows 4 to 53)
-        for row in range(4, 54):
-            val = sh1[f"C{row}"].value
-            if not val or val == 0 or val == "0":
-                r = row
-                break
-        if r == -1:
-            raise HTTPException(status_code=400, detail="لقد تجاوزت الحد الأقصى للملفات في قاعدة البيانات (50 عميل)!")
-
-    # Write sheet 1 fields
-    sh1[f"C{r}"] = c["name"]
-    sh1[f"D{r}"] = c["id_num"]
-    sh1[f"E{r}"] = c["mobile"]
-    sh1[f"F{r}"] = c["age"]
-    sh1[f"G{r}"] = c["employer"]
-    sh1[f"H{r}"] = c["emp_type"]
-    sh1[f"I{r}"] = c["basic_sal"]
-    sh1[f"J{r}"] = c["gross_sal"]
-    sh1[f"K{r}"] = c["net_sal"]
-    sh1[f"L{r}"] = c["svc_months"]
-    sh1[f"M{r}"] = c["simah"]
-    sh1[f"N{r}"] = c["inquiries"]
-    sh1[f"O{r}"] = c["default_status"]
-    sh1[f"P{r}"] = c["blacklist"]
-    sh1[f"Q{r}"] = c["sal_attach"]
+    # Clear rows 4 to 53 first
+    for r in range(4, 54):
+        for col in ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R']:
+            sh1[f"{col}{r}"] = None
+        for col in ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'L']:
+            sh2[f"{col}{r}"] = None
+        for col in ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']:
+            sh3[f"{col}{r}"] = None
+        sh5[f"J{r}"] = None
+        for col in ['F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P']:
+            sh6[f"{col}{r}"] = None
+            
+    # Get live clients from MongoDB
+    clients = db_get_clients()
     
-    # Write formulas for sheet 1 col A, B, R if not present
-    sh1[f"A{r}"] = f'=IF(C{r}<>"","ملف-"&TEXT(ROW()-3,"000"),"")'
-    sh1[f"B{r}"] = f'=IF(C{r}<>"",TODAY(),"")'
-    sh1[f"R{r}"] = c.get("workflow_stage", "جديد")
-
-    # Write sheet 2 fields
-    sh2[f"C{r}"] = c["loans_count"]
-    sh2[f"D{r}"] = c["loans_total"]
-    sh2[f"E{r}"] = c["real_estate_count"]
-    sh2[f"F{r}"] = c["real_estate_total"]
-    sh2[f"G{r}"] = c["cards_count"]
-    sh2[f"H{r}"] = c["cards_total"]
-    sh2[f"I{r}"] = c["finance_cos_count"]
-    sh2[f"J{r}"] = c["finance_cos_total"]
-    sh2[f"L{r}"] = c["monthly_installment"]
+    # Write clients to Excel
+    for c in clients:
+        r = c["row_idx"]
+        if r < 4 or r > 53:
+            continue
+            
+        sh1[f"A{r}"] = f'=IF(C{r}<>"","ملف-"&TEXT(ROW()-3,"000"),"")'
+        sh1[f"B{r}"] = f'=IF(C{r}<>"",TODAY(),"")'
+        sh1[f"C{r}"] = c["name"]
+        sh1[f"D{r}"] = c["id_num"]
+        sh1[f"E{r}"] = c["mobile"]
+        sh1[f"F{r}"] = c["age"]
+        sh1[f"G{r}"] = c["employer"]
+        sh1[f"H{r}"] = c["emp_type"]
+        sh1[f"I{r}"] = c["basic_sal"]
+        sh1[f"J{r}"] = c["gross_sal"]
+        sh1[f"K{r}"] = c["net_sal"]
+        sh1[f"L{r}"] = c["svc_months"]
+        sh1[f"M{r}"] = c["simah"]
+        sh1[f"N{r}"] = c["inquiries"]
+        sh1[f"O{r}"] = c["default_status"]
+        sh1[f"P{r}"] = c["blacklist"]
+        sh1[f"Q{r}"] = c["sal_attach"]
+        sh1[f"R{r}"] = c.get("workflow_stage", "جديد")
+        
+        sh2[f"A{r}"] = f"='1. بيانات العميل'!A{r}"
+        sh2[f"B{r}"] = f"='1. بيانات العميل'!C{r}"
+        sh2[f"C{r}"] = c["loans_count"]
+        sh2[f"D{r}"] = c["loans_total"]
+        sh2[f"E{r}"] = c["real_estate_count"]
+        sh2[f"F{r}"] = c["real_estate_total"]
+        sh2[f"G{r}"] = c["cards_count"]
+        sh2[f"H{r}"] = c["cards_total"]
+        sh2[f"I{r}"] = c["finance_cos_count"]
+        sh2[f"J{r}"] = c["finance_cos_total"]
+        sh2[f"K{r}"] = f"=IFERROR(D{r}+F{r}+H{r}+J{r},0)"
+        sh2[f"L{r}"] = c["monthly_installment"]
+        sh2[f"M{r}"] = f"='1. بيانات العميل'!K{r}"
+        sh2[f"N{r}"] = f"=IFERROR(IF(M{r}>0,L{r}/M{r},0),0)"
+        
+        sh3[f"A{r}"] = f"='1. بيانات العميل'!A{r}"
+        sh3[f"B{r}"] = f"='1. بيانات العميل'!C{r}"
+        sh3[f"C{r}"] = c["exec_requests_count"]
+        sh3[f"D{r}"] = c["exec_requests_total"]
+        sh3[f"E{r}"] = c["ind_exec_count"]
+        sh3[f"F{r}"] = c["ind_exec_total"]
+        sh3[f"G{r}"] = c["fin_exec_count"]
+        sh3[f"H{r}"] = c["fin_exec_total"]
+        sh3[f"I{r}"] = c["bank_exec_count"]
+        sh3[f"J{r}"] = c["bank_exec_total"]
+        sh3[f"K{r}"] = f"=IFERROR(C{r}+E{r}+G{r}+I{r},0)"
+        sh3[f"L{r}"] = f"=IFERROR(D{r}+F{r}+H{r}+J{r},0)"
+        sh3[f"M{r}"] = f'=IF(K{r}=0,"لا توجد تنفيذات",IF(OR(K{r}>8,L{r}>100000,G{r}>3),"مرفوض مباشر",IF(OR(K{r}>5,L{r}>50000),"مخاطر عالية",IF(OR(K{r}>3,L{r}>25000),"مخاطر متوسطة","مخاطر منخفضة"))))'
+        
+        sh5[f"A{r}"] = f"='1. بيانات العميل'!A{r}"
+        sh5[f"B{r}"] = f"='1. بيانات العميل'!C{r}"
+        sh5[f"C{r}"] = f"='4. محرك المخاطر'!R{r}"
+        sh5[f"D{r}"] = f"='1. بيانات العميل'!K{r}"
+        sh5[f"E{r}"] = f'=IF(C{r}="A",20,IF(C{r}="B",15,IF(C{r}="C",10,0)))'
+        sh5[f"F{r}"] = f"=IFERROR(D{r}*E{r},0)"
+        sh5[f"G{r}"] = f"='2. الالتزامات'!K{r}"
+        sh5[f"H{r}"] = f"='3. التنفيذات'!L{r}"
+        sh5[f"I{r}"] = f"=IFERROR(G{r}+H{r},0)"
+        sh5[f"J{r}"] = c["fees_percent"]
+        sh5[f"K{r}"] = f"=IFERROR(F{r}*J{r},0)"
+        sh5[f"L{r}"] = f"=IFERROR(F{r}-I{r},0)"
+        sh5[f"M{r}"] = f"=IFERROR(L{r}-K{r},0)"
+        sh5[f"N{r}"] = f'=IF(B{r}="","",IF(M{r}>50000,"فرصة ممتازة",IF(M{r}>20000,"فرصة جيدة",IF(M{r}>0,"فرصة ضعيفة","غير مجدي اقتصادياً"))))'
+        
+        sh6[f"A{r}"] = f"='1. بيانات العميل'!A{r}"
+        sh6[f"B{r}"] = f"='1. بيانات العميل'!C{r}"
+        sh6[f"C{r}"] = f"='4. محرك المخاطر'!R{r}"
+        sh6[f"D{r}"] = f"='4. محرك المخاطر'!S{r}"
+        sh6[f"E{r}"] = f"='1. بيانات العميل'!R{r}"
+        sh6[f"F{r}"] = c.get("analyst_name", "")
+        sh6[f"G{r}"] = c.get("analyst_date", "")
+        sh6[f"H{r}"] = c.get("analyst_recommendation", "")
+        sh6[f"I{r}"] = c.get("ops_name", "")
+        sh6[f"J{r}"] = c.get("ops_date", "")
+        sh6[f"K{r}"] = c.get("ops_decision", "")
+        sh6[f"L{r}"] = c.get("finance_name", "")
+        sh6[f"M{r}"] = c.get("finance_date", "")
+        sh6[f"N{r}"] = c.get("finance_decision", "")
+        sh6[f"O{r}"] = c.get("general_notes", "")
+        sh6[f"P{r}"] = c.get("completion_date", "")
     
-    # Sheet 2 formulas
-    sh2[f"A{r}"] = f"='1. بيانات العميل'!A{r}"
-    sh2[f"B{r}"] = f"='1. بيانات العميل'!C{r}"
-    sh2[f"K{r}"] = f"=IFERROR(D{r}+F{r}+H{r}+J{r},0)"
-    sh2[f"M{r}"] = f"='1. بيانات العميل'!K{r}"
-    sh2[f"N{r}"] = f"=IFERROR(IF(M{r}>0,L{r}/M{r},0),0)"
+    # Save to bytes buffer
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.read()
 
-    # Write sheet 3 fields
-    sh3[f"C{r}"] = c["exec_requests_count"]
-    sh3[f"D{r}"] = c["exec_requests_total"]
-    sh3[f"E{r}"] = c["ind_exec_count"]
-    sh3[f"F{r}"] = c["ind_exec_total"]
-    sh3[f"G{r}"] = c["fin_exec_count"]
-    sh3[f"H{r}"] = c["fin_exec_total"]
-    sh3[f"I{r}"] = c["bank_exec_count"]
-    sh3[f"J{r}"] = c["bank_exec_total"]
-    
-    # Sheet 3 formulas
-    sh3[f"A{r}"] = f"='1. بيانات العميل'!A{r}"
-    sh3[f"B{r}"] = f"='1. بيانات العميل'!C{r}"
-    sh3[f"K{r}"] = f"=IFERROR(C{r}+E{r}+G{r}+I{r},0)"
-    sh3[f"L{r}"] = f"=IFERROR(D{r}+F{r}+H{r}+J{r},0)"
-    sh3[f"M{r}"] = f'=IF(K{r}=0,"لا توجد تنفيذات",IF(OR(K{r}>8,L{r}>100000,G{r}>3),"مرفوض مباشر",IF(OR(K{r}>5,L{r}>50000),"مخاطر عالية",IF(OR(K{r}>3,L{r}>25000),"مخاطر متوسطة","مخاطر منخفضة"))))'
 
-    # Write sheet 5 fields
-    sh5[f"J{r}"] = c["fees_percent"]
-    sh5[f"A{r}"] = f"='1. بيانات العميل'!A{r}"
-    sh5[f"B{r}"] = f"='1. بيانات العميل'!C{r}"
-    sh5[f"C{r}"] = f"='4. محرك المخاطر'!R{r}"
-    sh5[f"D{r}"] = f"='1. بيانات العميل'!K{r}"
-    sh5[f"E{r}"] = f'=IF(C{r}="A",20,IF(C{r}="B",15,IF(C{r}="C",10,0)))'
-    sh5[f"F{r}"] = f"=IFERROR(D{r}*E{r},0)"
-    sh5[f"G{r}"] = f"='2. الالتزامات'!K{r}"
-    sh5[f"H{r}"] = f"='3. التنفيذات'!L{r}"
-    sh5[f"I{r}"] = f"=IFERROR(G{r}+H{r},0)"
-    sh5[f"K{r}"] = f"=IFERROR(F{r}*J{r},0)"
-    sh5[f"L{r}"] = f"=IFERROR(F{r}-I{r},0)"
-    sh5[f"M{r}"] = f"=IFERROR(L{r}-K{r},0)"
-    sh5[f"N{r}"] = f'=IF(B{r}="","",IF(M{r}>50000,"فرصة ممتازة",IF(M{r}>20000,"فرصة جيدة",IF(M{r}>0,"فرصة ضعيفة","غير مجدي اقتصادياً"))))'
+# ─────────────────────────────────────────────
+# Data Migration from Excel to MongoDB on Startup
+# ─────────────────────────────────────────────
 
-    # Write sheet 6 workflow fields (always write/update)
-    sh6[f"A{r}"] = f"='1. بيانات العميل'!A{r}"
-    sh6[f"B{r}"] = f"='1. بيانات العميل'!C{r}"
-    sh6[f"C{r}"] = f"='4. محرك المخاطر'!R{r}"
-    sh6[f"D{r}"] = f"='4. محرك المخاطر'!S{r}"
-    sh6[f"E{r}"] = f"='1. بيانات العميل'!R{r}"
-    
-    sh6[f"F{r}"] = c.get("analyst_name", "")
-    sh6[f"G{r}"] = c.get("analyst_date", "")
-    sh6[f"H{r}"] = c.get("analyst_recommendation", "")
-    
-    sh6[f"I{r}"] = c.get("ops_name", "")
-    sh6[f"J{r}"] = c.get("ops_date", "")
-    sh6[f"K{r}"] = c.get("ops_decision", "")
-    
-    sh6[f"L{r}"] = c.get("finance_name", "")
-    sh6[f"M{r}"] = c.get("finance_date", "")
-    sh6[f"N{r}"] = c.get("finance_decision", "")
-    
-    sh6[f"O{r}"] = c.get("general_notes", "")
-    sh6[f"P{r}"] = c.get("completion_date", "")
+def migrate_excel_to_mongodb():
+    """Migrates existing clients from Excel to MongoDB if MongoDB is empty"""
+    try:
+        if clients_col.count_documents({}) == 0:
+            print("📦 قاعدة بيانات MongoDB فارغة. جاري ترحيل البيانات من ملف Excel...")
+            excel_clients = read_clients_from_excel_legacy()
+            if excel_clients:
+                clients_col.insert_many(excel_clients)
+                print(f"✅ تم ترحيل {len(excel_clients)} ملف عميل بنجاح من Excel إلى MongoDB!")
+            else:
+                print("ℹ️  ملف Excel لا يحتوي على أي ملفات عملاء صالحة. سيتم بدء قاعدة البيانات فارغة.")
+        else:
+            count = clients_col.count_documents({})
+            print(f"✅ تم العثور على {count} ملف عميل في MongoDB. تم تخطي الترحيل.")
+    except Exception as e:
+        print(f"⚠️  خطأ أثناء ترحيل البيانات من Excel إلى MongoDB: {e}")
 
-    wb.save(EXCEL_PATH)
-    return r
 
+# Call migration on server startup
+migrate_excel_to_mongodb()
+
+
+# ─────────────────────────────────────────────
+# API Endpoints
+# ─────────────────────────────────────────────
 
 @app.get("/api/clients")
 def get_clients():
-    """Endpoint to list all clients and computed metrics"""
+    """List all clients with computed metrics from MongoDB"""
     try:
-        data = read_clients_from_excel()
-        return data
+        return db_get_clients()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء قراءة البيانات: {e}")
 
 
 @app.get("/api/stats")
 def get_stats():
-    """Endpoint to return administrative summary dashboard indicators"""
+    """Return administrative summary dashboard indicators from MongoDB"""
     try:
-        clients = read_clients_from_excel()
+        clients = db_get_clients()
         
         num_files = len(clients)
-        num_qualified = sum(1 for c in clients if "مؤهل" in c["decision"] and "تحفظ" not in c["decision"])
-        num_reserved = sum(1 for c in clients if "مؤهل بتحفظ" in c["decision"])
-        num_exceptions = sum(1 for c in clients if "يحتاج استثناء" in c["decision"])
-        num_rejected = sum(1 for c in clients if "مرفوض" in c["decision"])
+        num_qualified = sum(1 for c in clients if c.get("decision") == "مؤهل")
+        num_reserved = sum(1 for c in clients if c.get("decision") == "مؤهل بتحفظ")
+        num_exceptions = sum(1 for c in clients if c.get("decision") == "يحتاج استثناء")
+        num_rejected = sum(1 for c in clients if c.get("decision") == "مرفوض")
         
-        total_debts = sum(c["total_debts"] for c in clients)
-        total_executions = sum(c["total_exec_val"] for c in clients)
-        total_surpluses = sum(max(0.0, c["net_surplus"]) for c in clients)
-        total_fees = sum(c["company_fees"] for c in clients)
-        total_funding = sum(c["expected_funding"] for c in clients)
-        avg_risk_score = sum(c["total_pts"] for c in clients) / num_files if num_files > 0 else 0.0
+        total_debts = sum(c.get("total_debts", 0.0) for c in clients)
+        total_executions = sum(c.get("total_exec_val", 0.0) for c in clients)
+        total_surpluses = sum(max(0.0, c.get("net_surplus", 0.0)) for c in clients)
+        total_fees = sum(c.get("company_fees", 0.0) for c in clients)
+        total_funding = sum(c.get("expected_funding", 0.0) for c in clients)
+        avg_risk_score = sum(c.get("total_pts", 0) for c in clients) / num_files if num_files > 0 else 0.0
         
         return {
             "num_files": num_files,
-            "num_qualified": num_qualified + num_reserved, # Total qualified A+B
+            "num_qualified": num_qualified + num_reserved,
             "num_fully_qualified": num_qualified,
             "num_reserved_qualified": num_reserved,
             "num_exceptions": num_exceptions,
             "num_rejected": num_rejected,
-            
             "total_debts": total_debts,
             "total_executions": total_executions,
             "total_surpluses": total_surpluses,
@@ -546,115 +651,99 @@ def get_stats():
 
 @app.post("/api/clients")
 def save_client(client: ClientData):
-    """Endpoint to save a new client or update an existing one"""
+    """Save a new client or update an existing one in MongoDB"""
     try:
-        # Check if client already exists (ID check)
-        clients_list = read_clients_from_excel()
-        existing_row = -1
-        for c in clients_list:
-            if c["id_num"] == client.id_num:
-                existing_row = c["row_idx"]
-                break
-                
         c_dict = client.model_dump()
-        c_dict["fees_percent"] = client.fees_percent
-        
-        row_saved = write_client_to_excel(c_dict, existing_row)
-        
-        # Read the fresh calculated client
-        wb = openpyxl.load_workbook(EXCEL_PATH, data_only=True)
-        sh1 = wb['1. بيانات العميل']
-        file_id = sh1[f"A{row_saved}"].value or f"ملف-{row_saved-3:03d}"
-        
-        c_dict["file_id"] = file_id
-        c_dict["row_idx"] = row_saved
-        
-        calculated = calculate_client_metrics(c_dict)
+        saved = db_save_client(c_dict)
         return {
-            "success": True, 
-            "message": "تم حفظ ملف العميل وتحديث قاعدة بيانات Excel بنجاح!",
-            "client": calculated
+            "success": True,
+            "message": "تم حفظ ملف العميل بنجاح في قاعدة بيانات MongoDB!",
+            "client": saved
         }
-    except HTTPException as he:
-        raise he
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء الحفظ في Excel: {e}")
+        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء الحفظ: {e}")
 
 
 @app.delete("/api/clients/{row_idx}")
 def delete_client(row_idx: int):
-    """Endpoint to delete/clear a client from Excel"""
+    """Delete a client from MongoDB by row_idx"""
     try:
-        if row_idx < 4 or row_idx > 53:
-            raise HTTPException(status_code=400, detail="رقم صف غير صالح!")
-            
-        wb = openpyxl.load_workbook(EXCEL_PATH)
-        for sheet_name in ['1. بيانات العميل', '2. الالتزامات', '3. التنفيذات', '5. الجدوى التمويلية', '6. الاعتمادات']:
-            sheet = wb[sheet_name]
-            # Clear row inputs, leave formulas as defaults or clear all
-            if sheet_name == '1. بيانات العميل':
-                for col in ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q']:
-                    sheet[f"{col}{row_idx}"] = None
-            elif sheet_name == '2. الالتزامات':
-                for col in ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'L']:
-                    sheet[f"{col}{row_idx}"] = None
-            elif sheet_name == '3. التنفيذات':
-                for col in ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']:
-                    sheet[f"{col}{row_idx}"] = None
-            elif sheet_name == '5. الجدوى التمويلية':
-                sheet[f"J{row_idx}"] = None
-            elif sheet_name == '6. الاعتمادات':
-                for col in ['F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P']:
-                    sheet[f"{col}{row_idx}"] = None
-                    
-        wb.save(EXCEL_PATH)
-        return {"success": True, "message": "تم حذف الملف الائتماني بنجاح!"}
+        deleted = db_delete_client(row_idx)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="لم يتم العثور على الملف الائتماني المطلوب حذفه!")
+        return {"success": True, "message": "تم حذف الملف الائتماني بنجاح من قاعدة البيانات!"}
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء الحذف: {e}")
 
 
 @app.get("/api/download")
 def download_excel():
-    """Endpoint to download the current Excel sheet file"""
-    if os.path.exists(EXCEL_PATH):
-        return FileResponse(EXCEL_PATH, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename="نظام_تحليل_العملاء_الائتماني.xlsx")
-    raise HTTPException(status_code=404, detail="ملف الاكسل غير موجود")
+    """Generate a fresh Excel file from MongoDB data and serve it for download"""
+    try:
+        excel_bytes = generate_excel_from_mongodb()
+        from fastapi.responses import Response
+        from urllib.parse import quote
+        safe_filename = quote("نظام_تحليل_العملاء_الائتماني.xlsx", safe="")
+        return Response(
+            content=excel_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{safe_filename}"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء تصدير ملف Excel: {e}")
 
 
 @app.post("/api/upload")
 async def upload_excel(file: UploadFile = File(...)):
-    """Endpoint to upload/replace the current Excel sheet file"""
+    """Upload an Excel file, clear MongoDB, and import all records from the file"""
     if not file.filename.endswith(('.xlsx', '.xls')):
         raise HTTPException(status_code=400, detail="يرجى تحميل ملف Excel صالح (.xlsx, .xls)")
     try:
         content = await file.read()
         
-        # Validate that the file is a valid openpyxl workbook
-        import io
-        import openpyxl
+        # Validate the file first
         try:
             openpyxl.load_workbook(io.BytesIO(content))
         except Exception as ve:
             raise HTTPException(status_code=400, detail=f"ملف Excel غير صالح أو تالف: {ve}")
+        
+        # Read clients from the uploaded file
+        uploaded_clients = read_clients_from_excel_bytes(content)
+        
+        # Clear MongoDB collection and import fresh data
+        clients_col.delete_many({})
+        if uploaded_clients:
+            clients_col.insert_many(uploaded_clients)
             
+        # Also save the file locally as the new template
         with open(EXCEL_PATH, "wb") as f:
             f.write(content)
             
-        return {"message": "تم تحميل وتحديث ملف الاكسل بنجاح"}
+        return {
+            "success": True,
+            "message": f"تم استيراد {len(uploaded_clients)} ملف عميل بنجاح من ملف Excel إلى قاعدة بيانات MongoDB!",
+            "imported_count": len(uploaded_clients)
+        }
     except HTTPException as he:
         raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء تحميل الملف: {e}")
 
 
-# Serve UI Static Files
+# ─────────────────────────────────────────────
+# Static File Serving
+# ─────────────────────────────────────────────
+
 @app.get("/")
 def serve_home():
     return FileResponse("index.html")
 
-# Mount current directory to serve static assets
 app.mount("/", StaticFiles(directory="."), name="static")
 
 if __name__ == "__main__":
-    print("خادم الائتمان المالي يعمل الآن على الرابط: http://127.0.0.1:8000")
+    print("🚀 خادم الائتمان المالي يعمل الآن على الرابط: http://127.0.0.1:8000")
     uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
