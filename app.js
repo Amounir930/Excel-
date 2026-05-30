@@ -431,29 +431,58 @@ function selectClient(client) {
             </div>
 
             <div class="inspector-section">
-                <h4><i class="fa-solid fa-gavel" style="color: #EF4444;"></i> التنفيذات القضائية والنزاعات</h4>
-                <div class="grid-2col" style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--border-color);">
+                <h4><i class="fa-solid fa-gavel" style="color: #EF4444;"></i> ثالثاً: شاشة التنفيذات القضائية والنزاعات</h4>
+                
+                <div class="grid-2col" style="margin-bottom: 16px; background: rgba(0,0,0,0.15); padding: 12px; border-radius: 8px;">
                     <div class="info-item">
-                        <span class="info-label">عدد طلبات التنفيذ (أمر 46)</span>
-                        <span class="info-value" style="color: ${client.exec_requests_count > 0 ? '#EF4444' : 'inherit'};">${client.exec_requests_count} طلبات</span>
+                        <span class="info-label">إجمالي عدد التنفيذات (الكلي)</span>
+                        <span class="info-value" style="font-family: 'Outfit'; font-weight: 800; font-size: 15px; color: ${client.total_exec_count > 0 ? '#EF4444' : 'inherit'};">${client.total_exec_count} طلبات</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">إجمالي مبالغ التنفيذات</span>
-                        <span class="info-value currency" style="color: ${client.exec_requests_total > 0 ? '#EF4444' : 'inherit'};">${formatCurrency(client.exec_requests_total)}</span>
+                        <span class="info-label">إجمالي مبالغ التنفيذات الكلية</span>
+                        <span class="info-value currency" style="font-family: 'Outfit'; font-weight: 800; font-size: 15px; color: ${client.total_exec_val > 0 ? '#EF4444' : '#10B981'};">${formatCurrency(client.total_exec_val)} ريال</span>
+                    </div>
+                    <div class="info-item" style="grid-column: span 2; border-top: 1px dashed var(--border-color); padding-top: 8px; margin-top: 8px;">
+                        <span class="info-label" style="display: block; margin-bottom: 2px;">درجة خطورة التنفيذات (احتساب تلقائي)</span>
+                        <span class="info-value" style="font-size: 14px; font-weight: bold;"><span class="badge-risk ${riskClass}">${client.risk_level}</span></span>
                     </div>
                 </div>
-                <div class="grid-3col" style="font-size: 11px;">
+
+                <div class="grid-2col" style="font-size: 11px; row-gap: 8px; margin-bottom: 12px;">
                     <div class="info-item">
-                        <span class="info-label">تنفيذات الأفراد</span>
-                        <span class="info-value">${client.ind_exec_count} (${formatCurrency(client.ind_exec_total)})</span>
+                        <span class="info-label">عدد طلبات التنفيذ (أمر 46)</span>
+                        <span class="info-value">${client.exec_requests_count} طلبات</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">تنفيذات الشركات</span>
-                        <span class="info-value" style="color: ${client.fin_exec_count > 3 ? '#EF4444' : 'inherit'};">${client.fin_exec_count} (${formatCurrency(client.fin_exec_total)})</span>
+                        <span class="info-label">إجمالي مبالغ التنفيذ (أمر 46)</span>
+                        <span class="info-value currency">${formatCurrency(client.exec_requests_total)} ريال</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">عدد تنفيذات الأفراد</span>
+                        <span class="info-value">${client.ind_exec_count} طلبات</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">تنفيذات البنوك</span>
-                        <span class="info-value">${client.bank_exec_count} (${formatCurrency(client.bank_exec_total)})</span>
+                        <span class="info-label">إجمالي تنفيذات الأفراد</span>
+                        <span class="info-value currency">${formatCurrency(client.ind_exec_total)} ريال</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">عدد تنفيذات شركات التمويل</span>
+                        <span class="info-value">${client.fin_exec_count} طلبات</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">إجمالي تنفيذات شركات التمويل</span>
+                        <span class="info-value currency">${formatCurrency(client.fin_exec_total)} ريال</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="info-label">عدد تنفيذات البنوك</span>
+                        <span class="info-value">${client.bank_exec_count} طلبات</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">إجمالي تنفيذات البنوك</span>
+                        <span class="info-value currency">${formatCurrency(client.bank_exec_total)} ريال</span>
                     </div>
                 </div>
             </div>
