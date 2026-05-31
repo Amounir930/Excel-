@@ -48,14 +48,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const netSalInput = document.getElementById('form-net-sal');
 
     function calculateNetSalary() {
-        const basic = parseFloat(basicSalInput.value) || 0;
-        const gross = parseFloat(grossSalInput.value) || 0;
-        if (basicSalInput.value === '' && grossSalInput.value === '') {
+        const basic = parseFloat(basicSalInput.value);
+        const gross = parseFloat(grossSalInput.value);
+        
+        if (isNaN(basic) || isNaN(gross)) {
             netSalInput.value = '';
             return;
         }
+        
         const net = gross - (basic * 0.09);
-        netSalInput.value = isNaN(net) ? '' : Math.round(net);
+        netSalInput.value = isNaN(net) || net < 0 ? 0 : Math.round(net);
     }
 
     if (basicSalInput && grossSalInput && netSalInput) {
@@ -1365,15 +1367,15 @@ async function handleFormSubmit(e) {
         name: document.getElementById('form-name').value,
         id_num: document.getElementById('form-id').value,
         mobile: document.getElementById('form-mobile').value,
-        age: parseInt(document.getElementById('form-age').value),
+        age: parseInt(document.getElementById('form-age').value) || 0,
         employer: document.getElementById('form-employer').value,
         emp_type: document.getElementById('form-emp-type').value,
-        basic_sal: parseFloat(document.getElementById('form-basic-sal').value),
-        gross_sal: parseFloat(document.getElementById('form-gross-sal').value),
-        net_sal: parseFloat(document.getElementById('form-net-sal').value),
-        svc_months: parseInt(document.getElementById('form-svc-months').value),
-        simah: parseInt(document.getElementById('form-simah').value),
-        inquiries: parseInt(document.getElementById('form-inquiries').value),
+        basic_sal: parseFloat(document.getElementById('form-basic-sal').value) || 0,
+        gross_sal: parseFloat(document.getElementById('form-gross-sal').value) || 0,
+        net_sal: parseFloat(document.getElementById('form-net-sal').value) || 0,
+        svc_months: parseInt(document.getElementById('form-svc-months').value) || 0,
+        simah: parseInt(document.getElementById('form-simah').value) || 0,
+        inquiries: parseInt(document.getElementById('form-inquiries').value) || 0,
         default_status: document.getElementById('form-default').value,
         blacklist: document.getElementById('form-blacklist').value,
         sal_attach: document.getElementById('form-sal-attach').value,
@@ -1386,7 +1388,7 @@ async function handleFormSubmit(e) {
         cards_total: parseFloat(document.getElementById('form-cards-tot').value || 0),
         finance_cos_count: parseInt(document.getElementById('form-fin-cnt').value || 0),
         finance_cos_total: parseFloat(document.getElementById('form-fin-tot').value || 0),
-        monthly_installment: parseFloat(document.getElementById('form-installment').value),
+        monthly_installment: parseFloat(document.getElementById('form-installment').value) || 0,
         
         exec_requests_count: parseInt(document.getElementById('form-exec-cnt').value || 0),
         exec_requests_total: parseFloat(document.getElementById('form-exec-tot').value || 0),
