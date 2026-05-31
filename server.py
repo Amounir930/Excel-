@@ -234,7 +234,7 @@ def calculate_client_metrics(c: dict) -> dict:
         feasibility_decision = "غير مجدي اقتصادياً"
         
     return {
-        "file_id": c.get("file_id", "ملف-جديد"),
+        "file_id": str(c.get("file_id", "00001")).replace("ملف-", "").zfill(5),
         "date": c.get("date", datetime.date.today().strftime("%Y-%m-%d")),
         "name": c["name"],
         "id_num": c["id_num"],
@@ -333,9 +333,9 @@ def db_save_client(client_data: dict) -> dict:
     
     if existing:
         row_idx = existing["row_idx"]
-        file_id = existing.get("file_id") or f"ملف-{row_idx - 3:03d}"
+        file_id = existing.get("file_id") or f"{row_idx - 3:05d}"
         client_data["row_idx"] = row_idx
-        client_data["file_id"] = file_id
+        client_data["file_id"] = str(file_id).replace("ملف-", "").zfill(5)
         client_data["date"] = existing.get("date", datetime.date.today().strftime("%Y-%m-%d"))
         calculated = calculate_client_metrics(client_data)
         clients_col.replace_one({"_id": existing["_id"]}, calculated)
@@ -348,7 +348,7 @@ def db_save_client(client_data: dict) -> dict:
         else:
             row_idx = 4
             
-        file_id = f"ملف-{row_idx - 3:03d}"
+        file_id = f"{row_idx - 3:05d}"
         client_data["row_idx"] = row_idx
         client_data["file_id"] = file_id
         client_data["date"] = datetime.date.today().strftime("%Y-%m-%d")
@@ -384,7 +384,8 @@ def read_clients_from_excel_bytes(excel_bytes: bytes) -> list:
         if not name or name == 0 or name == "0":
             continue
             
-        file_id = sh1[f"A{r}"].value or f"ملف-{r-3:03d}"
+        raw_file_id = sh1[f"A{r}"].value or f"{r-3:05d}"
+        file_id = str(raw_file_id).replace("ملف-", "").zfill(5)
         date_val = sh1[f"B{r}"].value
         if hasattr(date_val, "strftime"):
             date_str = date_val.strftime("%Y-%m-%d")
@@ -491,7 +492,7 @@ def generate_excel_from_mongodb() -> bytes:
         if r < 4 or r > 53:
             continue
             
-        sh1[f"A{r}"] = f'=IF(C{r}<>"","ملف-"&TEXT(ROW()-3,"000"),"")'
+        sh1[f"A{r}"] = f'=IF(C{r}<>"",TEXT(ROW()-3,"00000"),"")'
         sh1[f"B{r}"] = f'=IF(C{r}<>"",TODAY(),"")'
         sh1[f"C{r}"] = c["name"]
         sh1[f"D{r}"] = c["id_num"]
@@ -597,13 +598,18 @@ def migrate_excel_to_mongodb():
             count = clients_col.count_documents({})
             print(f"✅ تم العثور على {count} ملف عميل في MongoDB. تم تخطي الترحيل.")
             
-            # Update/recalculate all existing clients in MongoDB to ensure the new net_sal formula is applied
-            print("🔄 جاري تحديث جميع السجلات في MongoDB لتطبيق معادلة الراتب الصافي الجديدة...")
+            # Update/recalculate all existing clients in MongoDB to ensure the new net_sal formula and 5-digit file_id are applied
+            print("🔄 جاري تحديث جميع السجلات في MongoDB لتطبيق التنسيق والمعادلات الجديدة...")
             all_clients = list(clients_col.find({}))
             for c in all_clients:
+                # Retrospectively format file_id to 5-digit number format
+                if "file_id" in c:
+                    c["file_id"] = str(c["file_id"]).replace("ملف-", "").zfill(5)
+                else:
+                    c["file_id"] = f"{c['row_idx'] - 3:05d}"
                 updated = calculate_client_metrics(c)
                 clients_col.replace_one({"_id": c["_id"]}, updated)
-            print("✅ تم تحديث جميع الملفات وتطبيق المعادلة بنجاح!")
+            print("✅ تم تحديث جميع الملفات وتنسيق أرقامها بنجاح!")
     except Exception as e:
         print(f"⚠️  خطأ أثناء ترحيل البيانات أو تحديثها: {e}")
 
