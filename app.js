@@ -706,73 +706,23 @@ function selectClient(client, openModal = false) {
             
             <div class="inspector-section">
                 <h4><i class="fa-solid fa-signature" style="color: #818CF8;"></i> سابعاً: Workflow ومراحل اعتماد الملف</h4>
-                <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
-                    مسار تدفق مراحل دراسة الملف الائتماني والاعتمادات المالية الحالية:
+                <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">
+                    مرحلة اعتماد الملف الائتماني والاعتمادات المالية الحالية (تفاعلية):
                 </p>
-                <div class="workflow-timeline" style="display: flex; flex-direction: column; gap: 10px; font-size: 11px;">
-                    ${(() => {
-                        const stages = [
-                            "جديد",
-                            "تحت التحليل",
-                            "معتمد من محلل الائتمان",
-                            "معتمد من مدير العمليات",
-                            "تحت المراجعة المالية",
-                            "معتمد مالياً",
-                            "مكتمل",
-                            "مرفوض"
-                        ];
-                        const currentStage = client.workflow_stage || "جديد";
-                        const currentIndex = stages.indexOf(currentStage);
-                        
-                        return stages.map((stage, idx) => {
-                            const isCurrent = currentStage === stage;
-                            const isPassed = currentIndex !== -1 && idx < currentIndex && currentStage !== "مرفوض" && stage !== "مرفوض";
-                            const isRejectedStage = stage === "مرفوض";
-                            
-                            // Style calculation
-                            let background = 'rgba(255,255,255,0.015)';
-                            let border = '1px solid var(--border-color)';
-                            let color = 'var(--text-secondary)';
-                            let icon = '<i class="fa-regular fa-circle" style="margin-left: 8px;"></i>';
-                            
-                            if (isCurrent) {
-                                if (stage === "مرفوض") {
-                                    background = 'rgba(239, 68, 68, 0.15)';
-                                    border = '1px solid #EF4444';
-                                    color = '#EF4444';
-                                    icon = '<i class="fa-solid fa-circle-xmark" style="margin-left: 8px;"></i>';
-                                } else if (stage === "مكتمل") {
-                                    background = 'rgba(16, 185, 129, 0.15)';
-                                    border = '1px solid #10B981';
-                                    color = '#10B981';
-                                    icon = '<i class="fa-solid fa-circle-check" style="margin-left: 8px;"></i>';
-                                } else {
-                                    background = 'rgba(99, 102, 241, 0.15)';
-                                    border = '1px solid #6366F1';
-                                    color = '#818CF8';
-                                    icon = '<i class="fa-solid fa-circle-play" style="margin-left: 8px; color: #818CF8;"></i>';
-                                }
-                            } else if (isPassed) {
-                                color = '#10B981';
-                                icon = '<i class="fa-solid fa-circle-check" style="margin-left: 8px; color: #10B981;"></i>';
-                            }
-                            
-                            if (isRejectedStage && !isCurrent) {
-                                // Don't highlight rejected stage unless it is active
-                                return '';
-                            }
-                            
-                            return `
-                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: ${background}; border: ${border}; border-radius: 8px; color: ${color}; font-weight: ${isCurrent ? 'bold' : 'normal'};">
-                                    <div style="display: flex; align-items: center;">
-                                        ${icon}
-                                        <span>${idx + 1}- ${stage}</span>
-                                    </div>
-                                    ${isCurrent ? '<span class="badge" style="background: var(--primary); color: #fff; font-size: 9px; padding: 2px 6px;">نشط حالياً</span>' : ''}
-                                </div>
-                            `;
-                        }).join("");
-                    })()}
+                <div class="form-group" style="margin-top: 10px;">
+                    <div style="position: relative; display: flex; align-items: center; width: 100%;">
+                        <select id="inspector-workflow-select" class="form-input" style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.3); color: #818CF8; font-weight: bold; padding: 12px 36px 12px 16px; border-radius: 10px; width: 100%; outline: none; cursor: pointer; transition: all 0.3s;" onchange="changeClientWorkflowStage(this.value)">
+                            <option value="جديد" ${client.workflow_stage === 'جديد' ? 'selected' : ''}>1- جديد</option>
+                            <option value="تحت التحليل" ${client.workflow_stage === 'تحت التحليل' ? 'selected' : ''}>2- تحت التحليل</option>
+                            <option value="معتمد من محلل الائتمان" ${client.workflow_stage === 'معتمد من محلل الائتمان' ? 'selected' : ''}>3- معتمد من محلل الائتمان</option>
+                            <option value="معتمد من مدير العمليات" ${client.workflow_stage === 'معتمد من مدير العمليات' ? 'selected' : ''}>4- معتمد من مدير العمليات</option>
+                            <option value="تحت المراجعة المالية" ${client.workflow_stage === 'تحت المراجعة المالية' ? 'selected' : ''}>5- تحت المراجعة المالية</option>
+                            <option value="معتمد مالياً" ${client.workflow_stage === 'معتمد مالياً' ? 'selected' : ''}>6- معتمد مالياً</option>
+                            <option value="مكتمل" ${client.workflow_stage === 'مكتمل' ? 'selected' : ''}>7- مكتمل</option>
+                            <option value="مرفوض" ${client.workflow_stage === 'مرفوض' ? 'selected' : ''}>8- مرفوض</option>
+                        </select>
+                        <i class="fa-solid fa-circle-play" style="position: absolute; right: 14px; color: #818CF8; pointer-events: none;"></i>
+                    </div>
                 </div>
             </div>
 
@@ -850,6 +800,44 @@ function switchInspectorTab(tabId) {
     
     const activeContent = document.getElementById(`tab-content-${tabId}`);
     if (activeContent) activeContent.classList.add('active');
+}
+
+// Change client workflow stage directly from inspector dropdown
+async function changeClientWorkflowStage(newStage) {
+    if (!selectedClient) return;
+    
+    // Copy the selected client and update the workflow stage
+    const body = {
+        ...selectedClient,
+        workflow_stage: newStage
+    };
+    
+    showToast("جاري تحديث مرحلة الملف...", "success");
+    
+    try {
+        const res = await fetch(`${API_URL}/clients`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+            showToast(`تم تغيير مرحلة الملف بنجاح إلى: ${newStage}`, "success");
+            selectedClient = data.client;
+            
+            // Refresh dashboard list
+            await refreshDashboard();
+            
+            // Update details view without closing the modal
+            selectClient(selectedClient, false);
+        } else {
+            showToast(data.detail || "فشل تحديث مرحلة الملف.", "error");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast("خطأ في الاتصال بالخادم.", "error");
+    }
 }
 
 // Close Detailed Client Modal
