@@ -42,6 +42,27 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
     
+    // Auto-calculate Net Salary: Gross Salary - 9% of Basic Salary
+    const basicSalInput = document.getElementById('form-basic-sal');
+    const grossSalInput = document.getElementById('form-gross-sal');
+    const netSalInput = document.getElementById('form-net-sal');
+
+    function calculateNetSalary() {
+        const basic = parseFloat(basicSalInput.value) || 0;
+        const gross = parseFloat(grossSalInput.value) || 0;
+        if (basicSalInput.value === '' && grossSalInput.value === '') {
+            netSalInput.value = '';
+            return;
+        }
+        const net = gross - (basic * 0.09);
+        netSalInput.value = isNaN(net) ? '' : Math.round(net);
+    }
+
+    if (basicSalInput && grossSalInput && netSalInput) {
+        basicSalInput.addEventListener('input', calculateNetSalary);
+        grossSalInput.addEventListener('input', calculateNetSalary);
+    }
+    
     // Close modal when clicking outside of it
     window.addEventListener('click', (e) => {
         const detailModal = document.getElementById('detail-modal');

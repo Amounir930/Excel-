@@ -109,6 +109,11 @@ class ClientData(BaseModel):
 
 def calculate_client_metrics(c: dict) -> dict:
     """Calculates all credit risk and feasibility metrics matching Excel sheet formulas"""
+    # Ensure net_sal is strictly calculated as: Gross Salary - 9% of Basic Salary
+    basic_sal = float(c.get("basic_sal") or 0.0)
+    gross_sal = float(c.get("gross_sal") or 0.0)
+    c["net_sal"] = gross_sal - (basic_sal * 0.09)
+    
     # 1. DTI
     dti = c["monthly_installment"] / c["net_sal"] if c["net_sal"] > 0 else 0.0
     
@@ -496,7 +501,7 @@ def generate_excel_from_mongodb() -> bytes:
         sh1[f"H{r}"] = c["emp_type"]
         sh1[f"I{r}"] = c["basic_sal"]
         sh1[f"J{r}"] = c["gross_sal"]
-        sh1[f"K{r}"] = c["net_sal"]
+        sh1[f"K{r}"] = f"=J{r}-(I{r}*0.09)"
         sh1[f"L{r}"] = c["svc_months"]
         sh1[f"M{r}"] = c["simah"]
         sh1[f"N{r}"] = c["inquiries"]
@@ -591,8 +596,16 @@ def migrate_excel_to_mongodb():
         else:
             count = clients_col.count_documents({})
             print(f"✅ تم العثور على {count} ملف عميل في MongoDB. تم تخطي الترحيل.")
+            
+            # Update/recalculate all existing clients in MongoDB to ensure the new net_sal formula is applied
+            print("🔄 جاري تحديث جميع السجلات في MongoDB لتطبيق معادلة الراتب الصافي الجديدة...")
+            all_clients = list(clients_col.find({}))
+            for c in all_clients:
+                updated = calculate_client_metrics(c)
+                clients_col.replace_one({"_id": c["_id"]}, updated)
+            print("✅ تم تحديث جميع الملفات وتطبيق المعادلة بنجاح!")
     except Exception as e:
-        print(f"⚠️  خطأ أثناء ترحيل البيانات من Excel إلى MongoDB: {e}")
+        print(f"⚠️  خطأ أثناء ترحيل البيانات أو تحديثها: {e}")
 
 
 # Call migration on server startup
