@@ -65,11 +65,24 @@ document.addEventListener("DOMContentLoaded", () => {
         grossSalInput.addEventListener('input', calculateNetSalary);
     }
     
-    // Close modal when clicking outside of it
+    // Close modal and custom dropdowns when clicking outside
     window.addEventListener('click', (e) => {
         const detailModal = document.getElementById('detail-modal');
         if (e.target === detailModal) {
             closeDetailModal();
+        }
+        
+        // Close custom workflow dropdown if open and clicked outside
+        const options = document.getElementById('custom-workflow-options');
+        if (options && options.classList.contains('show')) {
+            const container = e.target.closest('.custom-select-container');
+            if (!container) {
+                options.classList.remove('show');
+                const actualContainer = document.querySelector('.custom-select-container');
+                if (actualContainer) {
+                    actualContainer.classList.remove('open');
+                }
+            }
         }
     });
 });
@@ -709,19 +722,23 @@ function selectClient(client, openModal = false) {
                 <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">
                     مرحلة اعتماد الملف الائتماني والاعتمادات المالية الحالية (تفاعلية):
                 </p>
-                <div class="form-group" style="margin-top: 10px;">
-                    <div style="position: relative; display: flex; align-items: center; width: 100%;">
-                        <select id="inspector-workflow-select" class="form-input" style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.3); color: #818CF8; font-weight: bold; padding: 12px 36px 12px 16px; border-radius: 10px; width: 100%; outline: none; cursor: pointer; transition: all 0.3s;" onchange="changeClientWorkflowStage(this.value)">
-                            <option value="جديد" ${client.workflow_stage === 'جديد' ? 'selected' : ''}>1- جديد</option>
-                            <option value="تحت التحليل" ${client.workflow_stage === 'تحت التحليل' ? 'selected' : ''}>2- تحت التحليل</option>
-                            <option value="معتمد من محلل الائتمان" ${client.workflow_stage === 'معتمد من محلل الائتمان' ? 'selected' : ''}>3- معتمد من محلل الائتمان</option>
-                            <option value="معتمد من مدير العمليات" ${client.workflow_stage === 'معتمد من مدير العمليات' ? 'selected' : ''}>4- معتمد من مدير العمليات</option>
-                            <option value="تحت المراجعة المالية" ${client.workflow_stage === 'تحت المراجعة المالية' ? 'selected' : ''}>5- تحت المراجعة المالية</option>
-                            <option value="معتمد مالياً" ${client.workflow_stage === 'معتمد مالياً' ? 'selected' : ''}>6- معتمد مالياً</option>
-                            <option value="مكتمل" ${client.workflow_stage === 'مكتمل' ? 'selected' : ''}>7- مكتمل</option>
-                            <option value="مرفوض" ${client.workflow_stage === 'مرفوض' ? 'selected' : ''}>8- مرفوض</option>
-                        </select>
-                        <i class="fa-solid fa-circle-play" style="position: absolute; right: 14px; color: #818CF8; pointer-events: none;"></i>
+                <div class="custom-select-container">
+                    <div class="custom-select-trigger" onclick="toggleCustomWorkflowDropdown(event)">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-circle-play" style="color: #818CF8;"></i>
+                            <span>${client.workflow_stage || 'جديد'}</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-down" style="font-size: 11px; color: var(--text-secondary);"></i>
+                    </div>
+                    <div class="custom-select-options" id="custom-workflow-options">
+                        <div class="custom-option ${client.workflow_stage === 'جديد' ? 'active' : ''}" onclick="selectWorkflowOption('جديد')">1- جديد</div>
+                        <div class="custom-option ${client.workflow_stage === 'تحت التحليل' ? 'active' : ''}" onclick="selectWorkflowOption('تحت التحليل')">2- تحت التحليل</div>
+                        <div class="custom-option ${client.workflow_stage === 'معتمد من محلل الائتمان' ? 'active' : ''}" onclick="selectWorkflowOption('معتمد من محلل الائتمان')">3- معتمد من محلل الائتمان</div>
+                        <div class="custom-option ${client.workflow_stage === 'معتمد من مدير العمليات' ? 'active' : ''}" onclick="selectWorkflowOption('معتمد من مدير العمليات')">4- معتمد من مدير العمليات</div>
+                        <div class="custom-option ${client.workflow_stage === 'تحت المراجعة المالية' ? 'active' : ''}" onclick="selectWorkflowOption('تحت المراجعة المالية')">5- تحت المراجعة المالية</div>
+                        <div class="custom-option ${client.workflow_stage === 'معتمد مالياً' ? 'active' : ''}" onclick="selectWorkflowOption('معتمد مالياً')">6- معتمد مالياً</div>
+                        <div class="custom-option ${client.workflow_stage === 'مكتمل' ? 'active' : ''}" onclick="selectWorkflowOption('مكتمل')">7- مكتمل</div>
+                        <div class="custom-option ${client.workflow_stage === 'مرفوض' ? 'active' : ''}" onclick="selectWorkflowOption('مرفوض')">8- مرفوض</div>
                     </div>
                 </div>
             </div>
@@ -800,6 +817,30 @@ function switchInspectorTab(tabId) {
     
     const activeContent = document.getElementById(`tab-content-${tabId}`);
     if (activeContent) activeContent.classList.add('active');
+}
+
+// Toggle custom dropdown in credit inspector
+function toggleCustomWorkflowDropdown(event) {
+    event.stopPropagation();
+    const container = event.currentTarget.closest('.custom-select-container');
+    const options = document.getElementById('custom-workflow-options');
+    if (options && container) {
+        options.classList.toggle('show');
+        container.classList.toggle('open');
+    }
+}
+
+// Select option from custom dropdown in credit inspector
+function selectWorkflowOption(value) {
+    const options = document.getElementById('custom-workflow-options');
+    const container = document.querySelector('.custom-select-container');
+    if (options) {
+        options.classList.remove('show');
+    }
+    if (container) {
+        container.classList.remove('open');
+    }
+    changeClientWorkflowStage(value);
 }
 
 // Change client workflow stage directly from inspector dropdown
