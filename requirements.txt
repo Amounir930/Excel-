@@ -4,4 +4,5 @@ openpyxl
 pymongo
 dnspython
 python-dotenv
+python-multipart
 uvicorn
