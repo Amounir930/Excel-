@@ -22,14 +22,14 @@ if not MONGODB_URI:
 # Initialize MongoDB Connection
 try:
     mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
-    # Trigger connection check
-    mongo_client.server_info()
     db = mongo_client["credit_db"]
     clients_col = db["clients"]
+    # Trigger connection check
+    mongo_client.server_info()
     print("✅ تم الاتصال بنجاح بقاعدة بيانات MongoDB Atlas!")
 except Exception as e:
-    print(f"❌ خطأ أثناء الاتصال بقاعدة بيانات MongoDB Atlas: {e}")
-    raise SystemExit("فشل الاتصال بقاعدة بيانات MongoDB! يرجى التحقق من اتصال الإنترنت والإعدادات.")
+    print(f"⚠️ تحذير: لم يتم الاتصال بقاعدة بيانات MongoDB Atlas: {e}")
+    print("سيقوم النظام بمحاولة الاتصال تلقائياً عند إجراء أي طلبات. يرجى التحقق من اتصال الإنترنت.")
 
 # Create FastAPI app
 app = FastAPI(title="Credit Risk Analyzer API", version="2.0.0")
@@ -765,4 +765,4 @@ app.mount("/", StaticFiles(directory="."), name="static")
 
 if __name__ == "__main__":
     print("🚀 خادم الائتمان المالي يعمل الآن على الرابط: http://127.0.0.1:8000")
-    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=False)

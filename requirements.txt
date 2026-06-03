@@ -1,0 +1,7 @@
+fastapi
+pydantic
+openpyxl
+pymongo
+dnspython
+python-dotenv
+uvicorn
