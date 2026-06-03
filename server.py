@@ -16,20 +16,22 @@ load_dotenv()
 
 # MongoDB Configuration
 MONGODB_URI = os.getenv("MONGODB_URI")
-if not MONGODB_URI:
-    raise ValueError("MONGODB_URI environment variable is missing in .env file!")
+clients_col = None
 
 # Initialize MongoDB Connection
-try:
-    mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
-    db = mongo_client["credit_db"]
-    clients_col = db["clients"]
-    # Trigger connection check
-    mongo_client.server_info()
-    print("✅ تم الاتصال بنجاح بقاعدة بيانات MongoDB Atlas!")
-except Exception as e:
-    print(f"⚠️ تحذير: لم يتم الاتصال بقاعدة بيانات MongoDB Atlas: {e}")
-    print("سيقوم النظام بمحاولة الاتصال تلقائياً عند إجراء أي طلبات. يرجى التحقق من اتصال الإنترنت.")
+if MONGODB_URI:
+    try:
+        mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+        db = mongo_client["credit_db"]
+        clients_col = db["clients"]
+        # Trigger connection check
+        mongo_client.server_info()
+        print("✅ تم الاتصال بنجاح بقاعدة بيانات MongoDB Atlas!")
+    except Exception as e:
+        print(f"⚠️ تحذير: لم يتم الاتصال بقاعدة بيانات MongoDB Atlas: {e}")
+        print("سيقوم النظام بمحاولة الاتصال تلقائياً عند إجراء أي طلبات. يرجى التحقق من اتصال الإنترنت.")
+else:
+    print("⚠️ تحذير: متغير البيئة MONGODB_URI غير موجود! يرجى إضافته في إعدادات Vercel.")
 
 # Create FastAPI app
 app = FastAPI(title="Credit Risk Analyzer API", version="2.0.0")
@@ -318,6 +320,8 @@ def calculate_client_metrics(c: dict) -> dict:
 def db_get_clients() -> list:
     """Retrieves all clients from MongoDB, sorted by row_idx"""
     try:
+        if clients_col is None:
+            raise ValueError("اتصال قاعدة البيانات MongoDB غير مهيأ. يرجى إعداد متغير البيئة MONGODB_URI في إعدادات Vercel.")
         clients = list(clients_col.find({}).sort("row_idx", 1))
         for c in clients:
             c.pop("_id", None)
@@ -329,6 +333,8 @@ def db_get_clients() -> list:
 
 def db_save_client(client_data: dict) -> dict:
     """Saves a new client or updates an existing one in MongoDB"""
+    if clients_col is None:
+        raise ValueError("اتصال قاعدة البيانات MongoDB غير مهيأ. يرجى إعداد متغير البيئة MONGODB_URI في إعدادات Vercel.")
     existing = clients_col.find_one({"id_num": client_data["id_num"]})
     
     if existing:
@@ -361,6 +367,8 @@ def db_save_client(client_data: dict) -> dict:
 
 def db_delete_client(row_idx: int) -> bool:
     """Deletes a client document from MongoDB by row_idx"""
+    if clients_col is None:
+        raise ValueError("اتصال قاعدة البيانات MongoDB غير مهيأ. يرجى إعداد متغير البيئة MONGODB_URI في إعدادات Vercel.")
     res = clients_col.delete_one({"row_idx": row_idx})
     return res.deleted_count > 0
 
@@ -586,6 +594,9 @@ def generate_excel_from_mongodb() -> bytes:
 def migrate_excel_to_mongodb():
     """Migrates existing clients from Excel to MongoDB if MongoDB is empty"""
     try:
+        if clients_col is None:
+            print("⚠️ تخطي ترحيل البيانات لأن اتصال قاعدة البيانات غير مهيأ.")
+            return
         if clients_col.count_documents({}) == 0:
             print("📦 قاعدة بيانات MongoDB فارغة. جاري ترحيل البيانات من ملف Excel...")
             excel_clients = read_clients_from_excel_legacy()
